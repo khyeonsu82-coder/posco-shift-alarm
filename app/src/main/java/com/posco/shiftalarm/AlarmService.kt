@@ -5,8 +5,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioAttributes
 import android.media.Ringtone
 import android.media.RingtoneManager
@@ -22,7 +24,12 @@ import androidx.core.content.ContextCompat
 
 /**
  * 알람이 울리는 동안의 소리·진동·전체화면 알림을 담당하는 포그라운드 서비스.
- * 알림에는 fullScreenIntent 가 붙어 있어 잠금화면에서 AlarmActivity 가 전체화면으로 뜬다.
+ *
+ * v1.2 잠금화면 즉시 표시 3단계:
+ *  1) fullScreenIntent 알림 (정상 경로 — 잠금화면 위 전체화면 AlarmActivity)
+ *  2) 1.2초 뒤에도 알람 화면이 안 떴으면(startActivity 직접 호출) — 안드로이드 14에서
+ *     USE_FULL_SCREEN_INTENT 가 막혀 있어도 정확한 알람 직후의 임시 허용/다른 앱 위에 표시 권한으로 뜬다
+ *  3) 그래도 안 뜨면(다른 앱 위에 표시 권한이 있을 때) AlarmOverlay 로 잠금화면 위에 직접 그린다
  */
 class AlarmService : Service() {
 
@@ -35,6 +42,7 @@ class AlarmService : Service() {
         const val ACTION_SNOOZE = "com.posco.shiftalarm.SNOOZE_ALARM"
 
         private const val AUTO_STOP_MS = 10 * 60 * 1000L
+        private const val RETRY_LOCKSCREEN_MS = 1200L
 
         fun start(ctx: Context, alarm: ShiftAlarm) {
             val i = Intent(ctx, AlarmService::class.java).apply {
@@ -48,21 +56,53 @@ class AlarmService : Service() {
             try {
                 ContextCompat.startForegroundService(ctx, i)
             } catch (e: Exception) {
-                ctx.startService(i)
+                try {
+                    ctx.startService(i)
+                } catch (e2: Exception) {
+                }
             }
         }
 
         fun dismiss(ctx: Context) {
             val i = Intent(ctx, AlarmService::class.java).setAction(ACTION_STOP)
+                .setData(android.net.Uri.parse("shiftalarm://cmd/stop"))
             try {
                 ctx.startService(i)
             } catch (e: Exception) {
+                // 백그라운드 서비스 시작이 막혔으면(오버레이에서 끄는 경우 등) 브로드캐스트로 알린다
+                try {
+                    ctx.sendBroadcast(
+                        Intent(ACTION_STOP).setPackage(ctx.packageName)
+                    )
+                } catch (e2: Exception) {
+                }
                 // 서비스가 이미 내려갔으면 알림만 지운다
                 try {
                     val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                     nm.cancel(NOTIFICATION_ID)
-                } catch (e2: Exception) {
+                } catch (e3: Exception) {
                 }
+            }
+            AlarmOverlay.hide()
+        }
+
+        /** 잠금화면 위 알람 화면을 직접 띄워 본다(백그라운드 제한에 걸리면 조용히 실패). */
+        fun launchAlarmUi(ctx: Context, alarm: ShiftAlarm): Boolean {
+            val i = Intent(ctx, AlarmActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_NO_USER_ACTION
+                putExtra(AlarmScheduler.EXTRA_ID, alarm.id)
+                putExtra(AlarmScheduler.EXTRA_DATE, alarm.date)
+                putExtra(AlarmScheduler.EXTRA_TIME, alarm.time)
+                putExtra(AlarmScheduler.EXTRA_LABEL, alarm.label)
+                putExtra(AlarmScheduler.EXTRA_TS, alarm.ts)
+            }
+            return try {
+                ctx.startActivity(i)
+                true
+            } catch (e: Exception) {
+                false
             }
         }
     }
@@ -72,6 +112,38 @@ class AlarmService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private val handler = Handler(Looper.getMainLooper())
     private val autoStop = Runnable { stopAlarm() }
+    private var current: ShiftAlarm? = null
+    private var screenReceiverOn = false
+
+    private val cmdReceiver = object : BroadcastReceiver() {
+        override fun onReceive(c: Context?, i: Intent?) {
+            if (i?.action == ACTION_STOP) stopAlarm()
+        }
+    }
+
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(c: Context?, i: Intent?) {
+            // 화면이 늦게 켜졌거나 잠금이 풀리면 알람 화면을 다시 올린다
+            val a = current ?: return
+            if (AlarmActivity.onScreen) return
+            launchAlarmUi(this@AlarmService, a)
+        }
+    }
+
+    private val fallbackRunnable = object : Runnable {
+        override fun run() {
+            val a = current ?: return
+            if (AlarmActivity.onScreen || AlarmOverlay.isShowing()) return
+            // 2단계: 직접 startActivity
+            launchAlarmUi(this@AlarmService, a)
+            handler.postDelayed({
+                // 3단계: 그래도 안 떴으면 오버레이(다른 앱 위에 표시)
+                if (!AlarmActivity.onScreen && current != null) {
+                    AlarmOverlay.show(this@AlarmService, a)
+                }
+            }, 700L)
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -79,6 +151,8 @@ class AlarmService : Service() {
         super.onCreate()
         createChannel()
         acquireWake()
+        registerCmdReceiver()
+        registerScreenReceiver()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -90,7 +164,10 @@ class AlarmService : Service() {
             ACTION_SNOOZE -> {
                 val a = alarmFrom(intent)
                 if (a != null) {
-                    AlarmScheduler.snooze(this, a)
+                    try {
+                        AlarmScheduler.snooze(this, a)
+                    } catch (e: Exception) {
+                    }
                 }
                 stopAlarm()
                 return START_NOT_STICKY
@@ -101,6 +178,7 @@ class AlarmService : Service() {
                     stopAlarm()
                     return START_NOT_STICKY
                 }
+                current = a
                 try {
                     startForeground(NOTIFICATION_ID, buildNotification(a))
                 } catch (e: Exception) {
@@ -109,9 +187,18 @@ class AlarmService : Service() {
                 startRinging()
                 handler.removeCallbacks(autoStop)
                 handler.postDelayed(autoStop, AUTO_STOP_MS)
+                ensureLockScreenUi(a)
             }
         }
         return START_NOT_STICKY
+    }
+
+    /** 알람 화면이 실제로 떴는지 몇 번 확인하고, 안 떴으면 직접 띄우기 → 오버레이로 내려간다. */
+    private fun ensureLockScreenUi(a: ShiftAlarm) {
+        handler.removeCallbacks(fallbackRunnable)
+        // 정확한 알람 직후의 임시 허용 시간 안에서 먼저 한 번 시도한다
+        launchAlarmUi(this, a)
+        handler.postDelayed(fallbackRunnable, RETRY_LOCKSCREEN_MS)
     }
 
     private fun alarmFrom(intent: Intent?): ShiftAlarm? {
@@ -141,6 +228,7 @@ class AlarmService : Service() {
         ch.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         ch.enableVibration(false)
         ch.setSound(null, null)
+        ch.setShowBadge(false)
         nm.createNotificationChannel(ch)
     }
 
@@ -180,10 +268,16 @@ class AlarmService : Service() {
         val stopPi = PendingIntent.getService(this, 11, serviceIntent(ACTION_STOP, a), piFlags())
         val snoozePi = PendingIntent.getService(this, 12, serviceIntent(ACTION_SNOOZE, a), piFlags())
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val body = if (Perms.canUseFullScreen(this)) {
+            a.time + " · 지금 일어날 시간이에요"
+        } else {
+            a.time + " · 잠금화면 알림이 꺼져 있어요(설정에서 켜기)"
+        }
+
+        val b = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_alarm)
             .setContentTitle(getString(R.string.notif_title) + " " + a.label)
-            .setContentText(a.time + " · 지금 일어날 시간이에요")
+            .setContentText(body)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -191,11 +285,17 @@ class AlarmService : Service() {
             .setAutoCancel(false)
             .setShowWhen(false)
             .setSilent(true)
+            .setOnlyAlertOnce(true)
             .setContentIntent(fs)
             .setFullScreenIntent(fs, true)
             .addAction(0, getString(R.string.action_snooze), snoozePi)
             .addAction(0, getString(R.string.action_stop), stopPi)
-            .build()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // 즉시 표시(포그라운드 서비스 알림의 10초 지연 방지)
+            b.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+        }
+        return b.build()
     }
 
     private fun acquireWake() {
@@ -205,6 +305,33 @@ class AlarmService : Service() {
             wakeLock?.acquire(15 * 60 * 1000L)
         } catch (e: Exception) {
             wakeLock = null
+        }
+    }
+
+    private fun registerCmdReceiver() {
+        try {
+            ContextCompat.registerReceiver(
+                this,
+                cmdReceiver,
+                IntentFilter(ACTION_STOP),
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            )
+        } catch (e: Exception) {
+        }
+    }
+
+    private fun registerScreenReceiver() {
+        if (screenReceiverOn) return
+        try {
+            val f = IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_USER_PRESENT)
+            }
+            // 시스템 브로드캐스트라 EXPORTED 로 등록해야 전달된다(보호된 액션이라 위조는 불가)
+            ContextCompat.registerReceiver(this, screenReceiver, f, ContextCompat.RECEIVER_EXPORTED)
+            screenReceiverOn = true
+        } catch (e: Exception) {
+            screenReceiverOn = false
         }
     }
 
@@ -246,6 +373,8 @@ class AlarmService : Service() {
 
     private fun stopAlarm() {
         handler.removeCallbacks(autoStop)
+        handler.removeCallbacks(fallbackRunnable)
+        current = null
         try {
             ringtone?.stop()
         } catch (e: Exception) {
@@ -261,6 +390,8 @@ class AlarmService : Service() {
         } catch (e: Exception) {
         }
         wakeLock = null
+        AlarmOverlay.hide()
+        AlarmActivity.closeAll(this)
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
@@ -279,6 +410,19 @@ class AlarmService : Service() {
     }
 
     override fun onDestroy() {
+        handler.removeCallbacks(fallbackRunnable)
+        AlarmOverlay.hide()
+        if (screenReceiverOn) {
+            try {
+                unregisterReceiver(screenReceiver)
+            } catch (e: Exception) {
+            }
+            screenReceiverOn = false
+        }
+        try {
+            unregisterReceiver(cmdReceiver)
+        } catch (e: Exception) {
+        }
         try {
             ringtone?.stop()
         } catch (e: Exception) {

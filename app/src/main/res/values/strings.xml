@@ -4,9 +4,14 @@
     <string name="alarm_channel_name">교대 알람</string>
     <string name="alarm_channel_desc">출근 시각에 맞춰 울리는 알람입니다.</string>
     <string name="notif_title">\u23F0 알람</string>
-    <string name="btn_snooze">스누즈 5분</string>
+    <string name="btn_snooze">5분 뒤 다시 울리기</string>
     <string name="btn_stop">알람 끄기</string>
-    <string name="alarm_hint">잠금화면 위에서 울리고 있어요 · 스누즈는 5분 뒤 다시 울려요</string>
+    <string name="btn_stop_hold">길게 눌러 알람 끄기</string>
+    <string name="btn_stop_holding">계속 누르고 있으면 꺼져요…</string>
+    <string name="btn_unlock">폰 잠금 해제</string>
+    <string name="alarm_badge">\uD83D\uDD12 잠금화면 알람</string>
+    <string name="alarm_hint">잠금을 풀지 않고 여기서 바로 끌 수 있어요</string>
+    <string name="alarm_perm_note">잠금화면 전체화면 알림이 꺼져 있어 알림에서 열렸어요 · 눌러서 켜기</string>
     <string name="action_stop">끄기</string>
-    <string name="action_snooze">스누즈</string>
+    <string name="action_snooze">5분 뒤</string>
 </resources>

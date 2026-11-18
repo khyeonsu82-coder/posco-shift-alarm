@@ -9,8 +9,6 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.PowerManager
-import android.provider.Settings
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
@@ -44,7 +42,7 @@ class MainActivity : Activity() {
             allowContentAccess = true
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_DEFAULT
-            userAgentString = userAgentString + " PoscoShiftAlarm/1.0"
+            userAgentString = userAgentString + " PoscoShiftAlarm/1.2"
         }
         web.addJavascriptInterface(NativeAlarmBridge(this), "NativeAlarm")
         web.webChromeClient = WebChromeClient()
@@ -103,29 +101,15 @@ class MainActivity : Activity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
 
-    fun canUseFullScreen(): Boolean =
-        if (Build.VERSION.SDK_INT >= 34) {
-            try {
-                val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-                nm.canUseFullScreenIntent()
-            } catch (e: Exception) {
-                true
-            }
-        } else true
+    fun canUseFullScreen(): Boolean = Perms.canUseFullScreen(this)
 
-    fun isIgnoringBattery(): Boolean =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            try {
-                val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-                pm.isIgnoringBatteryOptimizations(packageName)
-            } catch (e: Exception) {
-                false
-            }
-        } else true
+    fun canDrawOverlay(): Boolean = Perms.canDrawOverlay(this)
+
+    fun isIgnoringBattery(): Boolean = Perms.isIgnoringBattery(this)
 
     /**
      * 잠금화면 알람에 필요한 권한을 하나씩 안내한다.
-     * (알림 → 정확한 알람 → 전체화면 알림 → 배터리 최적화 예외)
+     * (알림 → 정확한 알람 → 잠금화면 전체화면 알림 → 다른 앱 위에 표시 → 배터리 최적화 예외)
      */
     fun requestAlarmPermissions() {
         if (needsNotificationPermission()) {
@@ -133,38 +117,40 @@ class MainActivity : Activity() {
             return
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !AlarmScheduler.canScheduleExact(this)) {
-            openSystemSettings(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, withPackage = true)
+            Perms.openExactAlarmSettings(this)
             return
         }
         if (!canUseFullScreen()) {
-            if (Build.VERSION.SDK_INT >= 34) {
-                openSystemSettings(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, withPackage = true)
-            }
+            Perms.openFullScreenSettings(this)
             return
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isIgnoringBattery()) {
-            openSystemSettings(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, withPackage = true)
+        if (!canDrawOverlay()) {
+            Perms.openOverlaySettings(this)
+            return
         }
+        if (!isIgnoringBattery()) {
+            Perms.openBatterySettings(this)
+        }
+    }
+
+    fun openFullScreenSettings() {
+        Perms.openFullScreenSettings(this)
+    }
+
+    fun openOverlaySettings() {
+        Perms.openOverlaySettings(this)
+    }
+
+    fun openExactAlarmSettings() {
+        Perms.openExactAlarmSettings(this)
+    }
+
+    fun openNotificationSettings() {
+        Perms.openNotificationSettings(this)
     }
 
     fun openBatterySettings() {
-        openSystemSettings(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS, withPackage = false)
-    }
-
-    private fun openSystemSettings(action: String, withPackage: Boolean) {
-        try {
-            val i = Intent(action)
-            if (withPackage) i.data = Uri.parse("package:$packageName")
-            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(i)
-        } catch (e: Exception) {
-            try {
-                startActivity(
-                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
-                )
-            } catch (e2: Exception) {
-            }
-        }
+        Perms.openBatterySettings(this)
     }
 
     override fun onRequestPermissionsResult(
@@ -193,7 +179,7 @@ class MainActivity : Activity() {
         val o = JSONObject()
         try {
             o.put("native", true)
-            o.put("version", "1.1")
+            o.put("version", "1.2")
             o.put("scheduled", upcoming.size)
             o.put("next", upcoming.firstOrNull()?.ts ?: 0L)
             o.put("nextTime", upcoming.firstOrNull()?.time ?: "")
@@ -202,7 +188,9 @@ class MainActivity : Activity() {
             o.put("exact", AlarmScheduler.canScheduleExact(this))
             o.put("notifications", NotificationManagerCompat.from(this).areNotificationsEnabled())
             o.put("fullScreen", canUseFullScreen())
+            o.put("overlay", canDrawOverlay())
             o.put("battery", isIgnoringBattery())
+            o.put("channel", Perms.applyNotificationChannelState(this))
             o.put("snooze", AlarmStore.loadSnooze(this)?.ts ?: 0L)
         } catch (e: Exception) {
         }

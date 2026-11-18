@@ -10,7 +10,7 @@ import org.json.JSONObject
 class NativeAlarmBridge(private val activity: MainActivity) {
 
     @JavascriptInterface
-    fun version(): String = "1.1"
+    fun version(): String = "1.2"
 
     /** 예정 알람 14일치를 받아 저장하고 AlarmManager 에 다시 등록한다. */
     @JavascriptInterface
@@ -42,10 +42,32 @@ class NativeAlarmBridge(private val activity: MainActivity) {
     @JavascriptInterface
     fun getStatus(): String = activity.statusJson()
 
-    /** 알림 · 정확한 알람 · 전체화면 알림 · 배터리 예외를 차례로 안내한다. */
+    /** 알림 · 정확한 알람 · 전체화면 알림 · 다른 앱 위에 표시 · 배터리 예외를 차례로 안내한다. */
     @JavascriptInterface
     fun requestPermissions() {
         activity.runOnUiThread { activity.requestAlarmPermissions() }
+    }
+
+    /** 잠금화면 전체화면 알림 설정 화면으로 바로 이동(안드로이드 14+ 에서 꺼져 있을 때). */
+    @JavascriptInterface
+    fun openFullScreenSettings() {
+        activity.runOnUiThread { activity.openFullScreenSettings() }
+    }
+
+    /** "다른 앱 위에 표시" 설정 화면으로 바로 이동. */
+    @JavascriptInterface
+    fun openOverlaySettings() {
+        activity.runOnUiThread { activity.openOverlaySettings() }
+    }
+
+    @JavascriptInterface
+    fun openExactAlarmSettings() {
+        activity.runOnUiThread { activity.openExactAlarmSettings() }
+    }
+
+    @JavascriptInterface
+    fun openNotificationSettings() {
+        activity.runOnUiThread { activity.openNotificationSettings() }
     }
 
     @JavascriptInterface

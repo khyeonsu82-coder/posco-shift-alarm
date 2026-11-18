@@ -11,6 +11,8 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- 잠금화면 전체화면 알림이 막힌 기기에서 알람 화면을 잠금화면 위에 직접 띄우는 보조 수단 -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
@@ -37,12 +39,15 @@
             </intent-filter>
         </activity>
 
+        <!-- 잠금화면 위 알람 화면: 잠금 상태에서도 그려지고 화면이 켜진다 -->
         <activity
             android:name=".AlarmActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|uiMode|smallestScreenSize"
             android:excludeFromRecents="true"
             android:exported="false"
             android:launchMode="singleInstance"
             android:showOnLockScreen="true"
+            android:showWhenLocked="true"
             android:taskAffinity="com.posco.shiftalarm.alarm"
             android:theme="@style/AlarmTheme"
             android:turnScreenOn="true" />
@@ -65,7 +70,6 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.TIME_SET" />

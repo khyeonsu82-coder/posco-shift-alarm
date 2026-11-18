@@ -10,4 +10,5 @@
     <color name="dim2">#5F6B7E</color>
     <color name="amber">#FFC44D</color>
     <color name="amber2">#FFB020</color>
+    <color name="amber_fill">#FFDFA43B</color>
 </resources>
