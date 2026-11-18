@@ -200,6 +200,8 @@ object ShiftSync {
         for (i in 0 until DAYS_AHEAD) {
             val date = ShiftMath.addDays(today, i)
             val type = ShiftMath.shiftType(date, custom, crew)
+            // v2.1: 특근(overtime)은 알람을 잡지 않는다 — 달력·배지 표시에만 남긴다.
+            if (!ShiftMath.hasAlarms(type)) continue
             val t = types.optJSONObject(type) ?: continue
             // 날짜 예외(웹의 overrides) — 그 날짜만 켜거나 첫 알람 시각을 바꾼 것
             val ov = overrides?.optJSONObject(date)

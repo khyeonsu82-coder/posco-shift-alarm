@@ -72,6 +72,12 @@ object ShiftMath {
         "overtime" to "특근"
     )
 
+    /** 특근 — 출근 시각이 미정이라 v2.1 부터 알람을 잡지 않는다(근무·배지 표시에만 쓴다). */
+    const val TYPE_OVERTIME = "overtime"
+
+    /** 그 근무에 알람을 걸 수 있는지. 교대달력의 특근은 표시만 하고 알람 대상에서 뺀다. */
+    fun hasAlarms(type: String): Boolean = type != TYPE_OVERTIME
+
     fun today(): String = DF.format(Date())
 
     fun addDays(date: String, days: Int): String {

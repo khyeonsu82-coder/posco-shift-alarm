@@ -49,7 +49,7 @@ class MainActivity : Activity() {
             allowContentAccess = true
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_DEFAULT
-            userAgentString = userAgentString + " PoscoShiftAlarm/2.0"
+            userAgentString = userAgentString + " PoscoShiftAlarm/2.1"
         }
         web.addJavascriptInterface(NativeAlarmBridge(this), "NativeAlarm")
         web.webChromeClient = WebChromeClient()
@@ -299,7 +299,7 @@ class MainActivity : Activity() {
         val o = JSONObject()
         try {
             o.put("native", true)
-            o.put("version", "2.0")
+            o.put("version", "2.1")
             o.put("scheduled", upcoming.size)
             o.put("next", upcoming.firstOrNull()?.ts ?: 0L)
             o.put("nextTime", upcoming.firstOrNull()?.time ?: "")

@@ -115,11 +115,12 @@ v1.3 을 실제 폰에서 시험한 뒤 현수 님이 요청한 세 가지와, �
 
 현수 님이 요청한 네 가지를 한 번에 넣었다. 알람 화면 버튼 문구는 v1.5 의 **"알람 해제"** 그대로다.
 
-1. **근무별 복수 알람** — 주간/야간/특근/휴무마다 알람을 여러 개 두고 각각 시간·울림 방식·켜기/끄기를
+1. **근무별 복수 알람** — 주간/야간/휴무마다 알람을 여러 개 두고 각각 시간·울림 방식·켜기/끄기를
    바꿀 수 있다(예: 주간 `05:20 (진동만)` + `05:21 (소리+진동)`). 데이터는
    `{ id, time, mode: "vibrate"|"sound", enabled }` 로 저장하고, 예정 알람은 **날짜 × 켜진 알람**마다
    고유 id(`2026-11-19|slot_1`)로 `NativeAlarm.syncAlarms` 에 전달한다. v1.5 이하의 단일 시간 설정은
    불러올 때 자동으로 알람 한 건으로 옮긴다(주간 05:20 / 야간 16:30 유지).
+   (v2.1부터 특근은 알람 설정·예약에서 빠졌다 — 아래 v2.1 항목 참고)
 2. **알람별 진동만 / 소리+진동** — `ShiftAlarm.mode` 로 전달해 `AlarmService` 가 `vibrate` 알람은
    벨소리 없이 진동만 반복한다(테스트 알람과 달리 **해제할 때까지 계속**).
 3. **알람음 선택 · 점점 크게** — `NativeAlarm.pickRingtone()` 이 `ACTION_RINGTONE_PICKER` 를 열어
@@ -134,6 +135,22 @@ v1.3 을 실제 폰에서 시험한 뒤 현수 님이 요청한 세 가지와, �
 검증: `test_app.py` 37/37 · `test_clock.py` 20/20 · `test_native.py` 80/80
 (네이티브 소스 점검에 v2.0 항목 11개 추가 — mode · 진동 전용 · 알람음 · 페이드 · 6시간 동기화 · INTERNET).
 APK: `downloads/포스코교대알람-v2.0.apk` (versionCode 7). 실기기 확인은 현수 님 폰에서.
+
+## v2.1 (2026-11-19) — 특근(overtime)은 알람에서 제외
+
+현수 님 요청: "특근은 알람에서 없애죠". 특근은 출근 시각이 미정이라 고정 알람(05:20)이 의미가 없으므로
+**알람 설정·예약 대상에서 완전히 뺀다**(근무·배지 표시는 그대로).
+
+- 웹: 설정 시트의 `근무별 알람`에서 특근 블록을 없앴다(`TYPE_ORDER = ['day','night','off']`).
+  `alarmsFor()`·`alarmFor()`·`nativeAlarmList()`·`nativeConfig()` 모두 특근 날에는 알람을 만들지 않는다.
+  특근 날짜를 열면 알람 토글·시각·저장이 비활성되고 "특근은 알람을 잡지 않아요" 안내가 뜬다.
+  목록·배지·근무 표시(`특`, `overtime` 스타일)는 그대로 남긴다.
+- Android: `ShiftMath.hasAlarms(type)` 이 `overtime` 을 거칖하고, `ShiftSync.buildAlarms` 가
+  그 근무를 건넌다(웹이 안 보내도 백그라운드 재계산에서도 알람이 생기지 않음).
+- versionCode 8 / versionName 2.1, `assets/www` 를 웹 배포본과 동일하게 맞춤(index.html MD5 일치).
+- 검증: `test_app.py` 44/44(특근 6항목 신규) · `test_clock.py` 20/20(v2.1 표기) ·
+  `test_native.py` 85/85(특근 제외·블록 3개·assets 동일성 5항목 추가).
+- APK: `downloads/포스코교대알람-v2.1.apk` (versionCode 8). 실기기 확인은 현수 님 폰에서.
 
 ## 웹앱과의 관계
 
@@ -165,4 +182,4 @@ sh build_local.sh
    (기기에 따라 `다른 앱 위에 표시`도 함께 켜면 잠금화면 알람이 더 확실하다.)
 3. `10초 뒤 테스트 알람`으로 **화면을 잠근 상태에서** 잠금화면 위 알람 화면이 뜨는지 확인한다.
 
-minSdk 24 / targetSdk 34 / versionCode 7 / versionName 2.0
+minSdk 24 / targetSdk 34 / versionCode 8 / versionName 2.1
