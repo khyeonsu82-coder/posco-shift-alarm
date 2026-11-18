@@ -19,6 +19,37 @@
 | `BootReceiver.kt` | 부팅·업데이트·시간 변경 시 알람 재등록 |
 | `assets/www/` | 배포본 웹앱 (index.html, manifest, sw, 아이콘) |
 
+## 잠금화면에서 바로 끄기 (v1.3)
+
+v1.2 를 실제 삼성 폰 잠금화면에서 시험했을 때 **전체화면 `AlarmActivity` 가 뜨지 않고 접힌 알림 카드만**
+표시되었고, 끄려면 잠금을 풀어야 했다. 코드에서 확인한 원인과 수정:
+
+1. **알림이 무음이었다** — `setSilent(true)` + 채널 `setSound(null)`. 삼성 One UI 는 무음 알림을
+   전체화면 알림으로 승격하지 않고 일반 알림으로 강등한다. → 알림의 무음 플래그를 없애고
+   (소리는 서비스가 `USAGE_ALARM` 으로 직접 재생), 채널도 새로 만든다(`shift_alarm_channel_v2`,
+   `IMPORTANCE_HIGH`). 예전 채널은 삭제해 중요도가 낮아진 사용자 설정이 따라오지 않게 했다.
+2. **알림 ID 가 4711 로 고정** — 시스템은 같은 ID 의 알림을 "새 알림"이 아니라 "갱신"으로 보고
+   전체화면 알림 판단(`NotificationInterruptStateProviderImpl.shouldLaunchFullScreenIntentWhenAdded`)을
+   건너뛴다. 이전 알람 카드가 남아 있으면 이후 알람은 영원히 전체화면이 안 뜬다.
+   → 발화마다 새 ID(`AlarmUi.notifId(ts)`)로 올리고 이전 카드는 지운다.
+3. **`notify()` 먼저 → `startForeground`** — 포그라운드 서비스 알림으로 바로 올리지 않고
+   일반 알림으로 한 번 "추가"한 뒤 같은 알림으로 승격한다(새 알림 등록 시점에 FSI 판단이 돈다).
+4. **백그라운드 액티비티 실행(BAL) 권한 미적용** — targetSdk 34 는 PendingIntent 를 보내는 쪽이
+   `ActivityOptions.setPendingIntentBackgroundActivityStartMode(MODE_BACKGROUND_ACTIVITY_START_ALLOWED)`
+   로 opt-in 하지 않으면 액티비티 실행이 차단되며, **차단은 예외를 던지지 않는다**(v1.2 는 성공으로 오판).
+   → `AlarmUi.launch()` 가 이 옵션을 붙여 PendingIntent 를 보내고, 0.9/2/4초 뒤 재시도한다.
+5. **화면을 미리 깨우지 않는다** — WakeLock 은 `startForeground`·알림 발행 뒤에도 화면을 깨우지 않는
+   `PARTIAL_WAKE_LOCK` 만 쓴다. 화면은 `AlarmActivity` 의 `setTurnScreenOn(true)` 가 켠다.
+   (v1.2 도 `PARTIAL_WAKE_LOCK` 이라 이 항목은 원인이 아니었지만 순서를 문서화해 둔다.)
+6. **알림을 스와이프해도 꺼진다** — `setDeleteIntent(끄기)`, `setOngoing(false)`. 잠금화면 카드의
+   **끄기 / 5분 뒤** 액션은 잠금 해제 없이 눌린다. 카드가 접혀 있어도 밀어서 끌 수 있다.
+7. **진단** — 발화 시점의 권한 상태·화면 켜짐·잠금 여부와, 실제로 전체화면이 떴는지/오버레이로
+   떴는지/알림으로만 떴는지를 `AlarmLog` 에 남기고 설정 시트에 표시한다.
+
+설정 시트(`⚙️ 설정 → 안드로이드 네이티브 알람 · 잠금화면 점검`)는
+**알림 표시(채널 중요도) / 잠금화면에 알림 표시 / 잠금화면 전체화면 알림 / 다른 앱 위에 표시**를
+각각 ✓/✗ 로 보여 주고, **마지막 알람**이 어떻게 떴는지 한 줄로 알려 준다.
+
 ## 잠금화면에서 바로 끄기 (v1.2)
 
 v1.1 은 알람이 울리면 잠금화면에는 **알림만** 뜨고, 알람 화면(`AlarmActivity`)은 잠금을 풀고
@@ -73,4 +104,4 @@ sh build_local.sh
    (기기에 따라 `다른 앱 위에 표시`도 함께 켜면 잠금화면 알람이 더 확실하다.)
 3. `10초 뒤 테스트 알람`으로 **화면을 잠근 상태에서** 잠금화면 위 알람 화면이 뜨는지 확인한다.
 
-minSdk 24 / targetSdk 34 / versionCode 3 / versionName 1.2
+minSdk 24 / targetSdk 34 / versionCode 4 / versionName 1.3

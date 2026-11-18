@@ -37,6 +37,36 @@ object Perms {
         }
     }
 
+    /** 앱 알림이 켜져 있는지(채널 차단 포함). */
+    fun notificationsEnabled(ctx: Context): Boolean = try {
+        androidx.core.app.NotificationManagerCompat.from(ctx).areNotificationsEnabled()
+    } catch (e: Exception) {
+        true
+    }
+
+    /** 알람 채널의 중요도. 채널이 없으면 -1. HIGH(4) 미만이면 전체화면 알림이 뜨지 않는다. */
+    fun channelImportance(ctx: Context): Int {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return 4
+        return try {
+            val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE)
+                as android.app.NotificationManager
+            nm.getNotificationChannel(AlarmService.CHANNEL_ID)?.importance ?: -1
+        } catch (e: Exception) {
+            -1
+        }
+    }
+
+    /** 잠금화면에 알림을 표시하는 설정인지. (기기별로 항목이 없으면 true 로 본다) */
+    fun lockscreenNotificationsEnabled(ctx: Context): Boolean = try {
+        Settings.Secure.getInt(
+            ctx.contentResolver,
+            "lock_screen_show_notifications",
+            1
+        ) != 0
+    } catch (e: Exception) {
+        true
+    }
+
     fun isIgnoringBattery(ctx: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
         return try {
@@ -53,7 +83,7 @@ object Perms {
                 val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE)
                     as android.app.NotificationManager
                 val ch = nm.getNotificationChannel(AlarmService.CHANNEL_ID)
-                ch == null || ch.importance >= android.app.NotificationManager.IMPORTANCE_HIGH
+                ch != null && ch.importance >= android.app.NotificationManager.IMPORTANCE_HIGH
             }
         } catch (e: Exception) {
             true

@@ -11,7 +11,8 @@
     <string name="btn_unlock">폰 잠금 해제</string>
     <string name="alarm_badge">\uD83D\uDD12 잠금화면 알람</string>
     <string name="alarm_hint">잠금을 풀지 않고 여기서 바로 끌 수 있어요</string>
-    <string name="alarm_perm_note">잠금화면 전체화면 알림이 꺼져 있어 알림에서 열렸어요 · 눌러서 켜기</string>
+    <string name="alarm_perm_note">잠금화면 전체화면 알림이 꺼져 있어 일반 알림으로 떴어요 · 눌러서 설정 열기</string>
     <string name="action_stop">끄기</string>
     <string name="action_snooze">5분 뒤</string>
+    <string name="notif_big_hint">잠금을 풀지 않고 끄기 버튼으로 바로 끌 수 있어요. 일림을 옆으로 밀어도 꺼져요.</string>
 </resources>

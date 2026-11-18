@@ -65,6 +65,8 @@ class AlarmActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         showOverLockScreen()
+        // 폴백 판단(서비스)이 이 화면이 떴는지 알 수 있도록 onCreate 에서부터 표시한다
+        onScreen = true
         setContentView(R.layout.activity_alarm)
         setVolumeControlStream(AudioManager.STREAM_ALARM)
 
@@ -74,6 +76,11 @@ class AlarmActivity : Activity() {
         findViewById<Button>(R.id.btnUnlock).setOnClickListener { unlockPhone() }
         showPermissionNote()
         registerFinishReceiver()
+        // 진단: 마지막 알람이 잠금화면 전체화면으로 떴다는 기록
+        try {
+            AlarmLog.fullScreenShown(this)
+        } catch (e: Exception) {
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -116,6 +123,8 @@ class AlarmActivity : Activity() {
     override fun onResume() {
         super.onResume()
         onScreen = true
+        // 일부 기기/롬에서 잠금화면 위 표시 플래그가 초기화되므로 다시 걸어 둔다
+        showOverLockScreen()
     }
 
     override fun onStop() {
@@ -245,7 +254,7 @@ class AlarmActivity : Activity() {
         ui.removeCallbacks(holdDone)
         onScreen = false
         AlarmOverlay.hide()
-        AlarmService.dismiss(this)
+        AlarmService.dismiss(this, "화면")
         closeQuietly()
     }
 
@@ -259,7 +268,7 @@ class AlarmActivity : Activity() {
         }
         onScreen = false
         AlarmOverlay.hide()
-        AlarmService.dismiss(this)
+        AlarmService.dismiss(this, "화면")
         closeQuietly()
     }
 

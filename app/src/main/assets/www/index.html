@@ -341,7 +341,7 @@
       </div>
     </section>
 
-    <div class="footer">교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v1.2</div>
+    <div class="footer">교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v1.3</div>
   </main>
 </div>
 
@@ -425,8 +425,17 @@
     </div>
 
     <div class="group" id="nativeGroup" style="display:none">
-      <div class="group-title">안드로이드 네이티브 알람</div>
+      <div class="group-title">안드로이드 네이티브 알람 · 잠금화면 점검</div>
       <p class="hint" style="margin-top:0" id="nativeState">확인 중…</p>
+      <div class="drow">
+        <span>알림 표시 (중요도 높음)</span>
+        <span class="tiny" id="notifState">—</span>
+      </div>
+      <div class="drow">
+        <span>잠금화면에 알림 표시</span>
+        <span class="tiny" id="lockState">—</span>
+      </div>
+      <button id="btnNativeNotif" class="ghost-btn" style="margin-top:6px">알림 설정 열기</button>
       <div class="drow">
         <span>잠금화면 전체화면 알림</span>
         <span class="tiny" id="fsState">—</span>
@@ -437,12 +446,16 @@
         <span class="tiny" id="ovState">—</span>
       </div>
       <button id="btnNativeOverlay" class="ghost-btn" style="margin-top:6px">다른 앱 위에 표시 설정 열기</button>
+      <div class="drow" style="margin-top:10px">
+        <span>마지막 알람</span>
+        <span class="tiny" id="lastAlarm">—</span>
+      </div>
       <button id="btnNativePerm" class="ghost-btn" style="margin-top:8px">권한 한 번에 확인하기</button>
       <button id="btnNativeTest" class="ghost-btn">10초 뒤 테스트 알람 울리기</button>
-      <p class="hint">알람이 울리면 <b>잠금을 풀지 않고</b> 잠금화면 위 알람 화면에서 바로 끌 수 있어요. 그러려면 <b>잠금화면 전체화면 알림</b>이 켜져 있어야 하고(안드로이드 14부터 기본 꺼짐), 꺼져 있으면 알림으로만 떠서 잠금을 풀어야 합니다. <b>다른 앱 위에 표시</b>는 그마저 막힌 기기에서 알람 화면을 띄우는 보조 수단이에요.</p>
+      <p class="hint">울리면 <b>잠금을 풀지 않고</b> 잠금화면 위 알람 화면에서 바로 끌 수 있어요. 그러려면 위 네 항목이 모두 켜져 있어야 해요. 꺼져 있으면 잠금화면에 <b>알림 카드만</b> 뜨고, 그때는 카드의 <b>끄기</b> 버튼을 누르거나 카드를 옆으로 밀어도 알람이 꺼져요(잠금 해제 필요 없음). 테스트는 꼭 <b>화면을 잠근 상태</b>에서 해 보세요.</p>
     </div>
 
-    <div class="foot-note">교대 알람 v1.2 · 교대달력 읽기 전용 연동</div>
+    <div class="foot-note">교대 알람 v1.3 · 교대달력 읽기 전용 연동</div>
   </div>
 </div>
 
@@ -756,11 +769,27 @@ function requestNativePermissions(){
   setTimeout(() => { try{ renderNativeStatus(); }catch(e){} }, 800);
 }
 
+function nativeLastAlarm(st){
+  const last = st && st.last;
+  if (!last || !last.at) return { text: '아직 없어요', ok: null };
+  const d = new Date(last.at);
+  const hm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  const label = last.test ? '테스트' : (last.label || '알람');
+  if (last.fullscreen) {
+    return { text: hm + ' ' + label + ' · 잠금화면 전체화면으로 떴어요 ✓', ok: true };
+  }
+  if (last.overlayShown) {
+    return { text: hm + ' ' + label + ' · 잠금화면 위에 직접 띄웠어요(보조)', ok: true };
+  }
+  return { text: hm + ' ' + label + ' · 알림으로만 떴어요 ✗', ok: false };
+}
+
 function renderNativeStatus(){
   const box = $('nativeState');
   if (!box || !nativeAlarm) return;
   const st = nativeStatus();
   if (!st){ box.textContent = '상태를 읽지 못했어요'; return; }
+
   const bits = [];
   bits.push('예약 ' + (st.scheduled || 0) + '개');
   if (st.nextTime) bits.push('다음 ' + st.nextTime);
@@ -769,24 +798,42 @@ function renderNativeStatus(){
   bits.push(st.fullScreen ? '잠금화면 알림 ✓' : '잠금화면 알림 ✗');
   bits.push(st.battery ? '배터리 예외 ✓' : '배터리 예외 ✗');
   box.textContent = bits.join(' · ');
-  const bad = !st.exact || !st.notifications || !st.fullScreen || !st.battery;
+
+  /* 알람 채널이 HIGH(4) 이상이어야 전체화면 알림이 뜨다 */
+  const imp = (typeof st.channelImportance === 'number') ? st.channelImportance : null;
+  const channelOk = imp === null ? !!st.channel : imp >= 4;
+  const notifOk = !!st.notifications && channelOk;
+  const lockOk = st.lockscreen !== false;
+  const bad = !st.exact || !notifOk || !st.fullScreen || !st.battery || !lockOk;
   box.style.color = bad ? '#FFB020' : '#6FBF73';
 
-  /* 잠금화면에서 바로 끄기 위한 두 권한은 따로 크게 보여 준다 */
-  const fs = !!st.fullScreen, ov = !!st.overlay;
-  const fsEl = $('fsState'), ovEl = $('ovState');
-  if (fsEl){
-    fsEl.textContent = fs ? '허용 ✓' : '꺼짐 · 잠금화면에 안 떠요';
-    fsEl.style.color = fs ? '#6FBF73' : '#FFB020';
-  }
-  if (ovEl){
-    ovEl.textContent = ov ? '허용 ✓ (보조)' : '꺼짐 (선택)';
-    ovEl.style.color = ov ? '#6FBF73' : '#8C98AC';
-  }
-  const fsBtn = $('btnNativeFs');
-  if (fsBtn) fsBtn.style.display = fs ? 'none' : '';
-  const ovBtn = $('btnNativeOverlay');
-  if (ovBtn) ovBtn.style.display = ov ? 'none' : '';
+  const set = (id, text, color) => {
+    const el = $(id);
+    if (!el) return;
+    el.textContent = text;
+    el.style.color = color;
+  };
+  set('notifState',
+    notifOk ? '켜짐 ✓' : (st.notifications ? '중요도 낮음 · 설정에서 높이기' : '꺼짐 · 알림이 안 떠요'),
+    notifOk ? '#6FBF73' : '#FFB020');
+  set('lockState',
+    lockOk ? '표시됨 ✓' : '꺼짐 · 잠금화면에 안 보여요',
+    lockOk ? '#6FBF73' : '#FFB020');
+  set('fsState',
+    st.fullScreen ? '허용 ✓' : '꺼짐 · 잠금화면에 안 떠요',
+    st.fullScreen ? '#6FBF73' : '#FFB020');
+  set('ovState',
+    st.overlay ? '허용 ✓ (보조)' : '꺼짐 (보조)',
+    st.overlay ? '#6FBF73' : '#8C98AC');
+
+  const lastAlarm = nativeLastAlarm(st);
+  set('lastAlarm', lastAlarm.text,
+    lastAlarm.ok === null ? '#8C98AC' : (lastAlarm.ok ? '#6FBF73' : '#FFB020'));
+
+  const show = (id, on) => { const el = $(id); if (el) el.style.display = on ? '' : 'none'; };
+  show('btnNativeFs', !st.fullScreen);
+  show('btnNativeOverlay', !st.overlay);
+  show('btnNativeNotif', !notifOk || !lockOk);
 
   const btn = $('btnNativePerm');
   if (btn) btn.textContent = bad ? '권한 한 번에 확인하기' : '권한 다시 확인';
@@ -1367,20 +1414,25 @@ if (isNative()){
     try{ nativeAlarm.openOverlaySettings(); }catch(e){ requestNativePermissions(); }
     toast('이 앱을 다른 앱 위에 표시하도록 허용해 주세요');
   });
+  const notifBtnEl = $('btnNativeNotif');
+  if (notifBtnEl) notifBtnEl.addEventListener('click', () => {
+    try{ nativeAlarm.openNotificationSettings(); }catch(e){ requestNativePermissions(); }
+    toast('알림 · 잠금화면 표시 · 중요도를 확인해 주세요');
+  });
   $('btnNativeTest').addEventListener('click', () => {
     try{ nativeAlarm.testAlarmIn(10); }catch(e){}
-    toast('10초 뒤 테스트 알람이 울려요');
+    toast('10초 뒤 울려요 · 지금 화면을 잠가 두세요');
   });
   const clockTitle = $('clockOverlay').querySelector('h2');
   if (clockTitle) clockTitle.textContent = '⏰ 네이티브 알람 상태';
   const foot = document.querySelector('.footer');
-  if (foot) foot.textContent = '교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v1.2 · 네이티브 알람';
+  if (foot) foot.textContent = '교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v1.3 · 네이티브 알람';
   $('btnHelp').textContent = 'ℹ️ 이 앱은 닫아도 알람이 울려요 — 확인 사항';
   $('helpBody').innerHTML = '<b>이 앱은 폰의 알람으로 직접 예약</b>하기 때문에 앱을 닫거나 화면이 잠겨 있어도 정확한 시각에 울려요.'
     + '<ol>'
     + '<li>목록의 예정 알람 14일치가 폰 알람으로 자동 등록돼요. 근무·휴가가 바뀌면 앱을 여는 즉시 다시 맞춰요.</li>'
     + '<li><span class="kb">⚙️ 설정 → 안드로이드 네이티브 알람</span>에서 알림 · 정확한 알람 · <b>잠금화면 전체화면 알림</b> · 배터리 예외를 모두 켜 주세요. 잠금화면 전체화면 알림이 꺼져 있으면 잠금화면에 알람 화면이 뜨지 않고 알림만 떠요.</li>'
-    + '<li>울리면 잠금을 풀지 않아도 잠금화면 위에 알람 화면이 떠요. <b>길게 눌러 알람 끄기</b> 또는 <b>5분 뒤 다시</b>를 누르면 돼요.</li>'
+    + '<li>울리면 잠금을 풀지 않아도 잠금화면 위에 알람 화면이 떠요. <b>길게 눌러 알람 끄기</b> 또는 <b>5분 뒤 다시</b>를 누르면 돼요. 만약 알람 화면 없이 <b>알림으로만</b> 떴다면 알림의 <b>끄기</b> 버튼을 누르거나 알림을 옆으로 밀면 그대로 꺼져요(잠금 해제 필요 없음).</li>'
     + '<li>폰 제조사(삼성 등)의 <b>절전·백그라운드 제한</b>에서 이 앱을 예외로 두면 더 확실해요.</li>'
     + '<li>울리지 않는 것 같으면 설정의 <b>10초 뒤 테스트 알람</b>으로 먼저 확인해 보세요.</li>'
     + '</ol>';
