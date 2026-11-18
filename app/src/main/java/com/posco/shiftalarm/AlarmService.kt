@@ -114,7 +114,8 @@ class AlarmService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun alarmFrom(intent: Intent): ShiftAlarm? {
+    private fun alarmFrom(intent: Intent?): ShiftAlarm? {
+        if (intent == null) return null
         val id = intent.getStringExtra(AlarmScheduler.EXTRA_ID) ?: return null
         val ts = intent.getLongExtra(AlarmScheduler.EXTRA_TS, 0L).let {
             if (it > 0L) it else System.currentTimeMillis()
