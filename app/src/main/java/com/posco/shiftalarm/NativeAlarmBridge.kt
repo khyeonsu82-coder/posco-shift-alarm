@@ -10,7 +10,7 @@ import org.json.JSONObject
 class NativeAlarmBridge(private val activity: MainActivity) {
 
     @JavascriptInterface
-    fun version(): String = "1.3"
+    fun version(): String = "1.4"
 
     /** 예정 알람 14일치를 받아 저장하고 AlarmManager 에 다시 등록한다. */
     @JavascriptInterface

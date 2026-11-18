@@ -1,6 +1,5 @@
 package com.posco.shiftalarm
 
-import android.animation.ObjectAnimator
 import android.app.Activity
 import android.app.KeyguardManager
 import android.content.BroadcastReceiver
@@ -10,30 +9,26 @@ import android.content.IntentFilter
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
-import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 
 /**
- * 잠금화면 위에 전체화면으로 뜨는 알람 화면 (v1.2).
+ * 잠금화면 위에 전체화면으로 뜨는 알람 화면 (v1.4).
  *
- * v1.1 까지 잠금화면에서 바로 안 뜨던 원인:
- *  - 안드로이드 14(targetSdk 34)에서 USE_FULL_SCREEN_INTENT 가 기본 차단이라 fullScreenIntent 가 무시됨
- *  - 화면이 켜지고 잠금화면 위에 그려지도록 하는 처리가 legacy 플래그에만 의존
- * 수정: 실행 즉시 setShowWhenLocked/setTurnScreenOn + KEEP_SCREEN_ON + ALLOW_LOCK_WHILE_SCREEN_ON,
- *       끄기 버튼은 잠금 해제 없이 길게 눌러 바로 끌 수 있고, 실수 방지를 위해 1.2초 홀드.
+ * v1.4 에서 바꾼 것:
+ *  - 끄기 버튼을 **한 번 탭**으로 바꿨다(1.2초 길게 누르기 제거). 잠금을 풀지 않고 바로 꺼진다.
+ *  - 이 화면이 알람 서비스보다 먼저 뜬 경우(전체화면 알림·직접 실행), 화면이 서비스를 시작해
+ *    소리·진동이 화면과 함께 시작되도록 했다(서비스가 이미 그 알람으로 돌고 있으면 다시 시작하지 않는다).
+ *
+ * 잠금화면 위 표시: setShowWhenLocked / setTurnScreenOn (API 27+) + KEEP_SCREEN_ON + ALLOW_LOCK_WHILE_SCREEN_ON.
  */
 class AlarmActivity : Activity() {
 
     companion object {
         const val ACTION_FINISH = "com.posco.shiftalarm.ALARM_UI_FINISH"
-        private const val HOLD_MS = 1200L
 
         /** 알람 화면이 실제로 떠 있는지 — 서비스가 폴백(직접 띄우기/오버레이) 판단에 쓴다. */
         @Volatile
@@ -48,11 +43,6 @@ class AlarmActivity : Activity() {
         }
     }
 
-    private val ui = Handler(Looper.getMainLooper())
-    private val holdDone = Runnable { stopAlarm() }
-    private var stopAnimator: ObjectAnimator? = null
-    private var stopFill: View? = null
-    private var stopLabel: TextView? = null
     private var current: ShiftAlarm? = null
     private var receiverOn = false
 
@@ -81,6 +71,8 @@ class AlarmActivity : Activity() {
             AlarmLog.fullScreenShown(this)
         } catch (e: Exception) {
         }
+        // 화면이 먼저 떴을 때(전체화면 알림·직접 실행)도 소리·진동이 함께 시작되게 한다.
+        ensureAlarmRunning()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -88,6 +80,7 @@ class AlarmActivity : Activity() {
         setIntent(intent)
         bind(intent)
         showPermissionNote()
+        ensureAlarmRunning()
     }
 
     // ---------- 잠금화면 위 표시 ----------
@@ -134,12 +127,7 @@ class AlarmActivity : Activity() {
 
     override fun onDestroy() {
         onScreen = false
-        ui.removeCallbacks(holdDone)
         unregisterFinishReceiver()
-        try {
-            stopAnimator?.cancel()
-        } catch (e: Exception) {
-        }
         super.onDestroy()
     }
 
@@ -156,9 +144,30 @@ class AlarmActivity : Activity() {
         val date = i.getStringExtra(AlarmScheduler.EXTRA_DATE) ?: ""
         current = ShiftAlarm(id, date, time, label, ts)
 
+        // 어떤 경로(직접 실행 / 전체화면 알림)로 이 화면이 떴는지 진단 기록에 남긴다
+        val mode = i.getStringExtra(AlarmUi.EXTRA_LAUNCH_MODE) ?: ""
+        if (mode.isNotEmpty()) {
+            try {
+                AlarmLog.startMode(this, mode)
+            } catch (e: Exception) {
+            }
+        }
+
         findViewById<TextView>(R.id.alarmTime).text = time
         findViewById<TextView>(R.id.alarmLabel).text = label
         findViewById<TextView>(R.id.alarmDate).text = TimeFormat.dateText(ts)
+    }
+
+    /**
+     * 이 화면만 떠 있고 알람 서비스가 아직 그 알람으로 돌지 않았으면 서비스를 시작한다.
+     * (전체화면 알림을 눌러 열었거나, 화면이 서비스보다 먼저 뜬 경우 소리가 빠지지 않게)
+     */
+    private fun ensureAlarmRunning() {
+        val a = current ?: return
+        try {
+            if (AlarmService.activeTs != a.ts) AlarmService.start(this, a)
+        } catch (e: Exception) {
+        }
     }
 
     /** 전체화면 알림이 꺼져 있으면 이 화면이 왜 알림에서 열렸는지 알려 주고 바로 설정으로 보낸다. */
@@ -182,43 +191,11 @@ class AlarmActivity : Activity() {
         }
     }
 
-    // ---------- 길게 눌러 끄기 ----------
+    // ---------- 한 번 눌러 끄기 ----------
 
-    private fun setupStop(box: FrameLayout) {
-        val fill = findViewById<View>(R.id.stopFill)
-        val label = findViewById<TextView>(R.id.stopLabel)
-        stopFill = fill
-        stopLabel = label
-        fill.pivotX = 0f
-        fill.scaleX = 0f
-
-        val anim = ObjectAnimator.ofFloat(fill, View.SCALE_X, 0f, 1f)
-        anim.duration = HOLD_MS
-        stopAnimator = anim
-
-        box.setOnTouchListener { v, e ->
-            when (e.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    v.isPressed = true
-                    startHold()
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    v.isPressed = false
-                    cancelHold()
-                    true
-                }
-                MotionEvent.ACTION_CANCEL -> {
-                    v.isPressed = false
-                    cancelHold()
-                    true
-                }
-                else -> false
-            }
-        }
-        // 손가락 터치로는 위 OnTouchListener 가 처리하고, 이 클릭은 접근성(토크백)용이다.
+    private fun setupStop(box: View) {
+        // v1.4: 길게 누르기 대신 한 번 탭으로 즉시 끈다(스누즈 버튼은 그대로).
         box.setOnClickListener { stopAlarm() }
-
         try {
             val km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
             if (!km.isKeyguardLocked) findViewById<Button>(R.id.btnUnlock).visibility = View.GONE
@@ -226,32 +203,9 @@ class AlarmActivity : Activity() {
         }
     }
 
-    private fun startHold() {
-        ui.removeCallbacks(holdDone)
-        try {
-            stopAnimator?.cancel()
-            stopFill?.scaleX = 0f
-            stopAnimator?.start()
-        } catch (e: Exception) {
-        }
-        stopLabel?.text = getString(R.string.btn_stop_holding)
-        ui.postDelayed(holdDone, HOLD_MS)
-    }
-
-    private fun cancelHold() {
-        ui.removeCallbacks(holdDone)
-        try {
-            stopAnimator?.cancel()
-        } catch (e: Exception) {
-        }
-        stopFill?.scaleX = 0f
-        stopLabel?.text = getString(R.string.btn_stop_hold)
-    }
-
     // ---------- 끄기 / 스누즈 ----------
 
     private fun stopAlarm() {
-        ui.removeCallbacks(holdDone)
         onScreen = false
         AlarmOverlay.hide()
         AlarmService.dismiss(this, "화면")
@@ -304,7 +258,7 @@ class AlarmActivity : Activity() {
         }
     }
 
-    @Deprecated("알람 화면에서는 뒤로가기로 닫히지 않는다 (길게 눌러 끄기 / 5분 뒤 다시 사용)")
+    @Deprecated("알람 화면에서는 뒤로가기로 닫히지 않는다 (한 번 눌러 끄기 / 5분 뒤 다시 사용)")
     override fun onBackPressed() {
         // 알람은 명시적으로 끄거나 스누즈해야 끝난다
     }

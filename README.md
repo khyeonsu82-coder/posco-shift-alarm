@@ -12,8 +12,8 @@
 | `NativeAlarmBridge.kt` | 웹 ↔ 네이티브. `syncAlarms(json)`, `getStatus()`, `requestPermissions()`, `openFullScreenSettings()`, `openOverlaySettings()`, `testAlarmIn(s)` |
 | `AlarmScheduler.kt` | `setAlarmClock` 등록·취소, 5분 스누즈, 재부팅 후 재등록 |
 | `AlarmReceiver.kt` | 알람 시각 도달 → 서비스 기동 + 남은 알람 재등록 |
-| `AlarmService.kt` | 포그라운드 서비스: 시스템 알람음(USAGE_ALARM) 무한 반복 + 진동 + fullScreenIntent 알림 + 잠금화면 폴백 |
-| `AlarmActivity.kt` | 잠금화면 위 전체화면 알람 UI (길게 눌러 끄기 / 5분 뒤 다시 / 폰 잠금 해제) |
+| `AlarmService.kt` | 포그라운드 서비스: 시스템 알람음(USAGE_ALARM) 무한 반복 + 진동 + fullScreenIntent 알림 + 잠금화면 폴백 (테스트 알람은 짧은 진동만) |
+| `AlarmActivity.kt` | 잠금화면 위 전체화면 알람 UI (한 번 눌러 끄기 / 5분 뒤 다시 / 폰 잠금 해제) |
 | `AlarmOverlay.kt` | 전체화면 알림이 막힌 기기에서 "다른 앱 위에 표시"로 잠금화면 위에 그리는 마지막 보루 |
 | `Perms.kt` | 전체화면 알림·오버레이·배터리 권한 상태 확인과 설정 화면 직행 |
 | `BootReceiver.kt` | 부팅·업데이트·시간 변경 시 알람 재등록 |
@@ -75,6 +75,38 @@ v1.1 은 알람이 울리면 잠금화면에는 **알림만** 뜨고, 알람 화
    누르는 동안 채워지는 **1.2초 길게 누르기**(실수 방지)이고, `5분 뒤 다시` 버튼은 한 번 누르면 된다.
    필요한 경우에만 `폰 잠금 해제` 버튼이 키가드를 해제한다.
 
+## v1.4 (2026-11-19) — 원터치 끄기 · 테스트 알람 진동 · 잠금화면 안정화
+
+v1.3 을 실제 폰에서 시험한 뒤 현수 님이 요청한 세 가지와, 그때까지 남아 있던 잠금화면 문제를 함께 고쳤다.
+
+1. **한 번 눌러 바로 끄기** — 알람 화면의 끄기 버튼에서 1.2초 길게 누르기를 없애고 **한 번 탭**으로
+   즉시 꺼진다(`AlarmActivity`). 버튼은 88dp 로 크게 두고(`bg_stop_amber` 리플), 오버레이·알림 카드의
+   **끄기**도 원래부터 한 번 누르기다. `5분 뒤 다시` 버튼은 그대로 남는다.
+2. **테스트 알람은 진동만** — `10초 뒤 테스트 알람`은 벨소리 없이 **약 3.6초짜리 진동 패턴(반복 없음)** 만
+   울리고, 알람 화면은 **1분 뒤 스스로 꺼진다**(`TEST_AUTO_STOP_MS`). 실제 출근 알람은 기존대로
+   알람음 반복 + 진동 반복.
+3. **잠금화면 전체화면 알람 안정화**
+   - **채널 소리** — 채널 `setSound(null, null)`(완전 무음 채널)은 삼성 One UI 가 전체화면 알림으로
+     승격하지 않는 조건 중 하나다. v1.4 는 새 채널(`shift_alarm_channel_v3`)에 **들리지 않는 0.25초
+     무음 리소스**(`res/raw/silent.wav`, USAGE_ALARM)를 넣어 "소리가 있는 알람 채널"로 만들고,
+     실제 울림은 서비스가 낸다. 채널 소리가 null 이 아닌지는 `Perms.channelHasSound()` 로 확인·기록한다.
+   - **알람 화면을 먼저 직접 띄운다** — `AlarmReceiver` 가 (저장 알람 재등록보다 먼저) 서비스를 거치지 않고
+     `context.startActivity()` 로 `AlarmActivity` 를 바로 연다. 알람을 깨운 시스템 PendingIntent 브로드캐스트
+     직후에는 백그라운드 액티비티 실행이 잠깐 허용되고, "다른 앱 위에 표시" 권한이 있으면 항상 허용된다.
+     화면이 먼저 뜨면 `AlarmActivity` 가 서비스를 시작해 소리·진동이 함께 시작된다(중복 시작은 `activeTs` 로 막는다).
+   - **경로 교대 재시도** — 서비스는 0.9/2/4초 뒤 직접 실행과 `PendingIntent`(34+ BAL opt-in)를 번갈아
+     재시도하고, 그래도 안 뜨면 오버레이 → 화면만 켜기 순으로 내려간다.
+   - **진단 강화** — `AlarmLog` 에 `startMode`(direct/pi)·`channelSound` 를 남기고 설정 시트의 마지막 알람 줄에
+     "잠금화면 전체화면으로 떴어요 ✓ (직접 실행)"처럼 경로를 함께 보여 준다.
+   - `AlarmActivity` 는 `setShowWhenLocked`/`setTurnScreenOn`(+매니페스트 `showWhenLocked`/`turnScreenOn`)을
+     onCreate·onResume 에서 다시 걸고, 잠금 해제 없이 끄도록 유지했다(요청하지 않은 PIN 창은 띄우지 않는다).
+4. 웹(설정 시트) 문구: 테스트 버튼 라벨을 `10초 뒤 테스트 알람 (짧은 진동만 · 소리 없음)` 으로,
+   도움말의 끄기 안내를 "한 번 누르면 바로 꺼져요"로 바꿨다. 버전 표기는 v1.4.
+
+검증: `test_app.py` 31/31 · `test_clock.py` 20/20 · `test_native.py` 62/62
+(네이티브 소스 점검 21항목 신규 — 원터치·테스트 진동·채널 v3·직접 실행 경로·versionCode).
+실기기 잠금화면 검증은 현수 님 폰에서 필요하다(APK `downloads/포스코교대알람-v1.4.apk`).
+
 ## 웹앱과의 관계
 
 - 웹앱 JS 는 `window.NativeAlarm` 이 있을 때만 네이티브 경로를 쓴다. 브라우저(배포본)에서는
@@ -104,4 +136,4 @@ sh build_local.sh
    (기기에 따라 `다른 앱 위에 표시`도 함께 켜면 잠금화면 알람이 더 확실하다.)
 3. `10초 뒤 테스트 알람`으로 **화면을 잠근 상태에서** 잠금화면 위 알람 화면이 뜨는지 확인한다.
 
-minSdk 24 / targetSdk 34 / versionCode 4 / versionName 1.3
+minSdk 24 / targetSdk 34 / versionCode 5 / versionName 1.4

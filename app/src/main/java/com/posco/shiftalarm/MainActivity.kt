@@ -46,7 +46,7 @@ class MainActivity : Activity() {
             allowContentAccess = true
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_DEFAULT
-            userAgentString = userAgentString + " PoscoShiftAlarm/1.3"
+            userAgentString = userAgentString + " PoscoShiftAlarm/1.4"
         }
         web.addJavascriptInterface(NativeAlarmBridge(this), "NativeAlarm")
         web.webChromeClient = WebChromeClient()
@@ -233,7 +233,7 @@ class MainActivity : Activity() {
         val o = JSONObject()
         try {
             o.put("native", true)
-            o.put("version", "1.3")
+            o.put("version", "1.4")
             o.put("scheduled", upcoming.size)
             o.put("next", upcoming.firstOrNull()?.ts ?: 0L)
             o.put("nextTime", upcoming.firstOrNull()?.time ?: "")
@@ -246,6 +246,7 @@ class MainActivity : Activity() {
             o.put("battery", isIgnoringBattery())
             o.put("channel", Perms.applyNotificationChannelState(this))
             o.put("channelImportance", Perms.channelImportance(this))
+            o.put("channelSound", Perms.channelHasSound(this))
             o.put("lockscreen", Perms.lockscreenNotificationsEnabled(this))
             o.put("snooze", AlarmStore.loadSnooze(this)?.ts ?: 0L)
             // 마지막 알람이 실제로 어떻게 떴는지(진단)

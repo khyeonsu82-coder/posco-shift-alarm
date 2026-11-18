@@ -56,6 +56,22 @@ object Perms {
         }
     }
 
+    /**
+     * 알람 채널에 소리가 설정되어 있는지. `null`(완전 무음 채널)이면 삼성 One UI 가 전체화면
+     * 알림으로 승격하지 않는다 — v1.4 는 들리지 않는 소리 리소스를 채널에 넣어 이를 피한다.
+     */
+    fun channelHasSound(ctx: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
+        return try {
+            val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE)
+                as android.app.NotificationManager
+            val ch = nm.getNotificationChannel(AlarmService.CHANNEL_ID) ?: return false
+            ch.sound != null
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     /** 잠금화면에 알림을 표시하는 설정인지. (기기별로 항목이 없으면 true 로 본다) */
     fun lockscreenNotificationsEnabled(ctx: Context): Boolean = try {
         Settings.Secure.getInt(

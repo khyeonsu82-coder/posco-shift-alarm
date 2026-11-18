@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 잠금화면 위 알람 화면 (v1.2) — 큰 시각 + 길게 눌러 끄기 + 5분 뒤 다시 -->
+<!-- 잠금화면 위 알람 화면 (v1.4) — 큰 시각 + 한 번 눌러 끄기 + 5분 뒤 다시 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -65,22 +65,15 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
-    <!-- 길게 눌러 끄기: 누르는 동안 채워지고, 다 채워지면 알람이 꺼진다 -->
+    <!-- 한 번 눌러 끄기 (v1.4): 누르면 바로 꺼진다. 실수 방지를 위해 버튼을 크게 둔다 -->
     <FrameLayout
         android:id="@+id/stopBox"
         android:layout_width="match_parent"
         android:layout_height="88dp"
-        android:background="@drawable/bg_pill_amber"
-        android:clipToOutline="true"
+        android:background="@drawable/bg_stop_amber"
         android:clickable="true"
-        android:contentDescription="@string/btn_stop_hold"
+        android:contentDescription="@string/btn_stop"
         android:focusable="true">
-
-        <View
-            android:id="@+id/stopFill"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@color/amber_fill" />
 
         <TextView
             android:id="@+id/stopLabel"
@@ -88,7 +81,7 @@
             android:layout_height="match_parent"
             android:gravity="center"
             android:letterSpacing="0.02"
-            android:text="@string/btn_stop_hold"
+            android:text="@string/btn_stop"
             android:textColor="#101724"
             android:textSize="18sp"
             android:textStyle="bold" />

@@ -13,7 +13,10 @@ data class ShiftAlarm(
     val time: String,
     val label: String,
     val ts: Long
-)
+) {
+    /** 설정의 "10초 뒤 테스트 알람" — 벨소리 없이 짧은 진동만 울린다(v1.4). */
+    fun isTest(): Boolean = id.contains("test|")
+}
 
 /** SharedPreferences 저장소: 예정 알람 목록 + 스누즈 1건. */
 object AlarmStore {
