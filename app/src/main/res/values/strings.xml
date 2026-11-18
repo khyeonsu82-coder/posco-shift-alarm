@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">교대 알람</string>
+    <string name="alarm_channel_name">교대 알람</string>
+    <string name="alarm_channel_desc">출근 시각에 맞춰 울리는 알람입니다.</string>
+    <string name="notif_title">\u23F0 알람</string>
+    <string name="btn_snooze">스누즈 5분</string>
+    <string name="btn_stop">알람 끄기</string>
+    <string name="alarm_hint">잠금화면 위에서 울리고 있어요 · 스누즈는 5분 뒤 다시 울려요</string>
+    <string name="action_stop">끄기</string>
+    <string name="action_snooze">스누즈</string>
+</resources>
