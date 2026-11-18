@@ -102,7 +102,7 @@ object AlarmOverlay {
         box.addView(
             text(
                 app,
-                "잠금화면 전체화면 알림이 꺼져 있어 알람 화면을 직접 띄웠어요.\n길게 누르지 않고 한 번 눌러 끌 수 있어요.",
+                "잠금화면 전체화면 알림이 꺼져 있어 알람 화면을 직접 띄웠어요.",
                 12f,
                 Color.parseColor("#5F6B7E"),
                 topDp = 14f
@@ -119,7 +119,7 @@ object AlarmOverlay {
 
         box.addView(
             pill(
-                app, "알람 끄기", Color.parseColor("#FFC44D"), Color.parseColor("#101724")
+                app, "알람 해제", Color.parseColor("#FFC44D"), Color.parseColor("#101724")
             ) {
                 AlarmService.dismiss(app)
                 hide()

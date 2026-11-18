@@ -12,6 +12,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
@@ -40,6 +41,12 @@ import androidx.core.content.ContextCompat
  *     서비스는 그 화면이 안 떴을 때만 PendingIntent(직접실행/전체화면알림 교대)로 재시도한다.
  *  4) 잠금화면 화면이 뜨면 소리·진동은 화면(AlarmActivity)이 서비스를 시작해도 이어진다(중복 시작 방지).
  *
+ * v2.0 에서 바꾼 것:
+ *  1) 알람마다 **울림 방식** — `mode = "vibrate"` 는 벨소리 없이 진동만, 해제할 때까지 반복한다.
+ *  2) **알람음 선택 + 점점 크게** — 설정에서 고른 알람음(폰의 알람음·알림음)을 MediaPlayer 로 재생하고,
+ *     "점점 크게" 가 켜져 있으면 8초 동안 15% → 100% 로 올린다.
+ *  3) 백그라운드 6시간 동기화가 계산한 목록도 같은 방식으로 예약된다.
+ *
  * v1.3 에서 바꾼 것 (v1.2 는 잠금화면에 알림 카드만 떴다):
  *  · 알림 ID 를 발화마다 새로 붙여 시스템이 "새 알림"으로 FSI 판단을 하게 했다.
  *  · `notify()` → `startForeground` 순서, 끄기·스누즈 액션, 스와이프로 끄기(deleteIntent).
@@ -64,6 +71,10 @@ class AlarmService : Service() {
         private const val TEST_AUTO_STOP_MS = 60 * 1000L
         /** 테스트 알람 진동 길이(ms). 벨소리는 내지 않는다. */
         private const val TEST_BUZZ_MS = 4_000L
+        /** 점점 크게: 8초 = 0.5초 × 16단계, 시작 음량 15%. */
+        private const val FADE_STEPS = 16
+        private const val FADE_STEP_MS = 500L
+        private const val FADE_START = 0.15f
         /** 잠금화면 화면이 안 뜰 때 다시 시도하는 간격(ms). */
         private val RETRY_MS = longArrayOf(900L, 2000L, 4000L)
 
@@ -81,6 +92,7 @@ class AlarmService : Service() {
                 putExtra(AlarmScheduler.EXTRA_TIME, alarm.time)
                 putExtra(AlarmScheduler.EXTRA_LABEL, alarm.label)
                 putExtra(AlarmScheduler.EXTRA_TS, alarm.ts)
+                putExtra(AlarmScheduler.EXTRA_MODE, ShiftAlarm.modeOf(alarm.mode))
             }
             try {
                 ContextCompat.startForegroundService(ctx, i)
@@ -172,6 +184,9 @@ class AlarmService : Service() {
     }
 
     private var ringtone: Ringtone? = null
+    private var player: MediaPlayer? = null
+    private var fadeRunnable: Runnable? = null
+    private var fading = false
     private var vibrator: Vibrator? = null
     private var ringWake: PowerManager.WakeLock? = null
     private var screenWake: PowerManager.WakeLock? = null
@@ -305,8 +320,8 @@ class AlarmService : Service() {
             }
         }
 
-        // ③ 소리·진동 — 테스트 알람은 짧은 진동만
-        if (a.isTest()) startTestBuzz() else startRinging()
+        // ③ 소리·진동 — 테스트 알람은 짧은 진동만, 진동 전용 알람은 진동만
+        if (a.isTest()) startTestBuzz() else startRinging(a)
 
         // ④ 잠금화면 위 알람 화면 — 즉시 한 번, 안 뜨면 재시도
         ensureLockScreenUi(a)
@@ -359,7 +374,8 @@ class AlarmService : Service() {
             date = intent.getStringExtra(AlarmScheduler.EXTRA_DATE) ?: "",
             time = intent.getStringExtra(AlarmScheduler.EXTRA_TIME) ?: TimeFormat.hm(ts),
             label = intent.getStringExtra(AlarmScheduler.EXTRA_LABEL) ?: "알람",
-            ts = ts
+            ts = ts,
+            mode = ShiftAlarm.modeOf(intent.getStringExtra(AlarmScheduler.EXTRA_MODE))
         )
     }
 
@@ -384,6 +400,7 @@ class AlarmService : Service() {
             putExtra(AlarmScheduler.EXTRA_TIME, a.time)
             putExtra(AlarmScheduler.EXTRA_LABEL, a.label)
             putExtra(AlarmScheduler.EXTRA_TS, a.ts)
+            putExtra(AlarmScheduler.EXTRA_MODE, ShiftAlarm.modeOf(a.mode))
         }
 
     private fun stopActionPi(a: ShiftAlarm, code: Int, reason: String): PendingIntent =
@@ -402,6 +419,7 @@ class AlarmService : Service() {
 
         val body = when {
             a.isTest() -> a.time + " · 테스트 알람(진동만 울려요)"
+            a.isVibrateOnly() -> a.time + " · 진동만 울리는 알람이에요"
             Perms.canUseFullScreen(this) -> a.time + " · 지금 일어날 시간이에요"
             else -> a.time + " · 잠금화면 전체화면 알림이 꺼져 있어요(설정에서 켜기)"
         }
@@ -482,14 +500,51 @@ class AlarmService : Service() {
         }
     }
 
-    /** 실제 출근 알람: 알람음 반복 + 진동 반복. */
-    private fun startRinging() {
+    /**
+     * 실제 출근 알람.
+     *  - mode = "vibrate": 벨소리 없이 진동만 반복(해제할 때까지).
+     *  - mode = "sound": 설정에서 고른 알람음 반복 + 진동 반복. "점점 크게" 면 8초 동안 15% → 100%.
+     */
+    private fun startRinging(a: ShiftAlarm) {
+        fading = RingPrefs.fadeIn(this)
+        if (!a.isVibrateOnly()) startSound()
+        startVibration()
+        // 소리·진동이 도는 동안 CPU 를 깨워 둔다(PARTIAL 은 화면을 켜지 않는다).
+        holdPartialWake()
+    }
+
+    /** 설정한 알람음(없으면 시스템 기본 알람음)을 반복 재생한다. */
+    private fun startSound() {
+        val uri = RingPrefs.alarmUri(this)
         try {
-            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            if (uri != null) {
+                val mp = MediaPlayer()
+                mp.setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+                mp.setDataSource(applicationContext, uri)
+                mp.isLooping = true
+                mp.prepare()
+                val start = if (fading) FADE_START else 1f
+                mp.setVolume(start, start)
+                mp.start()
+                player = mp
+                if (fading) startFadeIn(start)
+                return
+            }
+        } catch (e: Exception) {
+            // 미디어 재생 실패 → 아래 Ringtone 폴백
+        }
+        try {
+            releasePlayer()
+            val fb = uri ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            if (uri != null) {
-                val r = RingtoneManager.getRingtone(applicationContext, uri)
+            if (fb != null) {
+                val r = RingtoneManager.getRingtone(applicationContext, fb)
                 r.audioAttributes = AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_ALARM)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -503,7 +558,29 @@ class AlarmService : Service() {
         } catch (e: Exception) {
             // 무음 모드·벨소리 파일 없음 등은 무시(진동은 계속)
         }
+    }
 
+    /** 점점 크게: 8초 동안 [start] → 1.0 까지 0.5초 간격으로 올린다. */
+    private fun startFadeIn(start: Float) {
+        fadeRunnable?.let { handler.removeCallbacks(it) }
+        var step = 0
+        val steps = FADE_STEPS
+        val r = object : Runnable {
+            override fun run() {
+                step++
+                val f = start + (1f - start) * (step.toFloat() / steps)
+                try {
+                    player?.setVolume(f, f)
+                } catch (e: Exception) {
+                }
+                if (step < steps) handler.postDelayed(this, FADE_STEP_MS)
+            }
+        }
+        fadeRunnable = r
+        handler.postDelayed(r, FADE_STEP_MS)
+    }
+
+    private fun startVibration() {
         try {
             val v = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
             vibrator = v
@@ -517,9 +594,20 @@ class AlarmService : Service() {
         } catch (e: Exception) {
             // 진동 미지원 기기 무시
         }
+    }
 
-        // 소리·진동이 도는 동안 CPU 를 깨워 둔다(PARTIAL 은 화면을 켜지 않는다).
-        holdPartialWake()
+    private fun releasePlayer() {
+        fadeRunnable?.let { handler.removeCallbacks(it) }
+        fadeRunnable = null
+        try {
+            player?.stop()
+        } catch (e: Exception) {
+        }
+        try {
+            player?.release()
+        } catch (e: Exception) {
+        }
+        player = null
     }
 
     /**
@@ -558,6 +646,7 @@ class AlarmService : Service() {
 
     /** 소리·진동·WakeLock 만 정리한다(알람 상태 current 는 그대로). */
     private fun releaseSound() {
+        releasePlayer()
         try {
             ringtone?.stop()
         } catch (e: Exception) {
@@ -581,6 +670,7 @@ class AlarmService : Service() {
         val had = current != null
         current = null
         activeTs = 0L
+        releasePlayer()
         try {
             ringtone?.stop()
         } catch (e: Exception) {
@@ -640,6 +730,7 @@ class AlarmService : Service() {
             unregisterReceiver(cmdReceiver)
         } catch (e: Exception) {
         }
+        releasePlayer()
         try {
             ringtone?.stop()
         } catch (e: Exception) {

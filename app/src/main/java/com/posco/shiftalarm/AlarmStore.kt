@@ -12,10 +12,21 @@ data class ShiftAlarm(
     val date: String,
     val time: String,
     val label: String,
-    val ts: Long
+    val ts: Long,
+    /** 울림 방식: "sound" = 소리+진동, "vibrate" = 진동만 (v2.0). */
+    val mode: String = MODE_SOUND
 ) {
     /** 설정의 "10초 뒤 테스트 알람" — 벨소리 없이 짧은 진동만 울린다(v1.4). */
     fun isTest(): Boolean = id.contains("test|")
+
+    fun isVibrateOnly(): Boolean = mode == MODE_VIBRATE
+
+    companion object {
+        const val MODE_SOUND = "sound"
+        const val MODE_VIBRATE = "vibrate"
+
+        fun modeOf(v: String?): String = if (v == MODE_VIBRATE) MODE_VIBRATE else MODE_SOUND
+    }
 }
 
 /** SharedPreferences 저장소: 예정 알람 목록 + 스누즈 1건. */
@@ -44,7 +55,8 @@ object AlarmStore {
                         date = o.optString("date", ""),
                         time = o.optString("time", ""),
                         label = o.optString("label", ""),
-                        ts = ts
+                        ts = ts,
+                        mode = ShiftAlarm.modeOf(o.optString("mode", ""))
                     )
                 )
             }
@@ -69,10 +81,29 @@ object AlarmStore {
                 .put("time", o.optString("time", ""))
                 .put("label", o.optString("label", ""))
                 .put("ts", ts)
+                .put("mode", ShiftAlarm.modeOf(o.optString("mode", "")))
             clean.put(item)
         }
         prefs(ctx).edit().putString(KEY_ALARMS, clean.toString()).apply()
         return clean.length()
+    }
+
+    /** 계산된 알람 목록을 그대로 저장한다(백그라운드 동기화용, v2.0). */
+    fun saveList(ctx: Context, list: List<ShiftAlarm>) {
+        val clean = JSONArray()
+        for (a in list) {
+            if (a.id.isBlank() || a.ts <= 0L) continue
+            clean.put(
+                JSONObject()
+                    .put("id", a.id)
+                    .put("date", a.date)
+                    .put("time", a.time)
+                    .put("label", a.label)
+                    .put("ts", a.ts)
+                    .put("mode", ShiftAlarm.modeOf(a.mode))
+            )
+        }
+        prefs(ctx).edit().putString(KEY_ALARMS, clean.toString()).apply()
     }
 
     fun clear(ctx: Context) {
@@ -86,6 +117,7 @@ object AlarmStore {
             .put("time", alarm.time)
             .put("label", alarm.label)
             .put("ts", alarm.ts)
+            .put("mode", ShiftAlarm.modeOf(alarm.mode))
         prefs(ctx).edit().putString(KEY_SNOOZE, o.toString()).apply()
     }
 
@@ -96,7 +128,8 @@ object AlarmStore {
             val id = o.optString("id", "")
             val ts = o.optLong("ts", 0L)
             if (id.isBlank() || ts <= 0L) null
-            else ShiftAlarm(id, o.optString("date", ""), o.optString("time", ""), o.optString("label", ""), ts)
+            else ShiftAlarm(id, o.optString("date", ""), o.optString("time", ""), o.optString("label", ""), ts,
+                ShiftAlarm.modeOf(o.optString("mode", "")))
         } catch (e: Exception) {
             null
         }

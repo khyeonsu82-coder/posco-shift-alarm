@@ -20,6 +20,7 @@ object AlarmScheduler {
     const val EXTRA_TIME = "alarm_time"
     const val EXTRA_LABEL = "alarm_label"
     const val EXTRA_TS = "alarm_ts"
+    const val EXTRA_MODE = "alarm_mode"
 
     const val SNOOZE_MINUTES = 5L
 
@@ -45,6 +46,7 @@ object AlarmScheduler {
             putExtra(EXTRA_TIME, alarm.time)
             putExtra(EXTRA_LABEL, alarm.label)
             putExtra(EXTRA_TS, alarm.ts)
+            putExtra(EXTRA_MODE, ShiftAlarm.modeOf(alarm.mode))
         }
 
     private fun firePi(ctx: Context, alarm: ShiftAlarm): PendingIntent =
@@ -144,7 +146,7 @@ object AlarmScheduler {
     fun placeTest(ctx: Context, seconds: Int): ShiftAlarm {
         val sec = seconds.coerceIn(1, 600)
         val ts = System.currentTimeMillis() + sec * 1000L
-        val alarm = ShiftAlarm("test|$ts", "test", TimeFormat.hm(ts), "테스트 알람", ts)
+        val alarm = ShiftAlarm("test|$ts", "test", TimeFormat.hm(ts), "테스트 알람", ts, ShiftAlarm.MODE_VIBRATE)
         place(ctx, alarm)
         return alarm
     }

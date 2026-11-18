@@ -168,6 +168,26 @@
     padding:6px 6px; font-size:12.5px; font-weight:800; font-variant-numeric:tabular-nums; color-scheme:dark;
     width:122px; min-width:0}
   input[type=time]:disabled{opacity:.55; color:#93A0B4}
+  .tblock{padding:8px 0; border-top:1px solid #1D2735}
+  .tblock:first-child{border-top:0}
+  .tset-head{display:flex; align-items:center; gap:9px}
+  .slots{margin-top:2px}
+  .slot{display:flex; align-items:center; gap:6px; padding:4px 0 4px 30px}
+  .slot.dim{opacity:.55}
+  .slot-empty{padding:3px 0 3px 30px; font-size:11px; font-weight:700; color:#6E7B8F}
+  .slot-time{background:#141C29; border:1px solid #2B3850; color:#E9EEF7; border-radius:9px;
+    padding:5px 6px; font-size:12.5px; font-weight:800; font-variant-numeric:tabular-nums}
+  .mode-btn{background:#1B2434; border:1px solid #2B3850; color:#A9B6C9; border-radius:9px;
+    padding:5px 7px; font-size:10.5px; font-weight:800; white-space:nowrap}
+  .mode-btn.vib{background:#2B1F08; border-color:#6B4E12; color:var(--amber)}
+  .switch.sm{width:38px; height:22px}
+  .switch.sm span::after{width:17px; height:17px; left:2.5px; top:2.5px}
+  .switch.sm input:checked + span::after{transform:translateX(16px)}
+  .slot-del{background:transparent; border:0; color:#7B879B; font-size:13px; padding:4px 5px; line-height:1}
+  .slot-add{width:100%; margin-top:4px; padding:7px; border-radius:10px; border:1px dashed #2B3850;
+    background:transparent; color:#9FB0C8; font-size:11px; font-weight:800}
+  .slot-add:active{background:#161E2C}
+  .dr-alarm .more{color:#8C98AC; font-size:9px; font-weight:900; margin-left:2px; vertical-align:super}
   .seg{display:flex; gap:6px; margin-bottom:9px}
   .seg button{flex:1 1 0; padding:8px 4px; border-radius:11px; background:#1B2434; border:1px solid #2B3850;
     font-size:11.5px; font-weight:800; color:#A9B5C7}
@@ -341,7 +361,7 @@
       </div>
     </section>
 
-    <div class="footer">교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v1.4</div>
+    <div class="footer">교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.0</div>
   </main>
 </div>
 
@@ -355,31 +375,8 @@
     </div>
 
     <div class="group">
-      <div class="group-title">근무별 알람</div>
-      <div class="tset">
-        <span class="badge b-day">주</span>
-        <div class="tset-name">주간<em>07:00 출근</em></div>
-        <input type="time" id="time-day" data-type="day" step="60" aria-label="주간 알람 시간">
-        <label class="switch"><input type="checkbox" id="on-day" data-type="day"><span></span></label>
-      </div>
-      <div class="tset">
-        <span class="badge b-night">야</span>
-        <div class="tset-name">야간<em>19:00 출근</em></div>
-        <input type="time" id="time-night" data-type="night" step="60" aria-label="야간 알람 시간">
-        <label class="switch"><input type="checkbox" id="on-night" data-type="night"><span></span></label>
-      </div>
-      <div class="tset">
-        <span class="badge b-ot">특</span>
-        <div class="tset-name">특근<em>출근 시각 미정 · 주간 기준</em></div>
-        <input type="time" id="time-overtime" data-type="overtime" step="60" aria-label="특근 알람 시간">
-        <label class="switch"><input type="checkbox" id="on-overtime" data-type="overtime"><span></span></label>
-      </div>
-      <div class="tset">
-        <span class="badge b-off">휴</span>
-        <div class="tset-name">휴무 · 휴가<em>기본 꺼짐</em></div>
-        <input type="time" id="time-off" data-type="off" step="60" aria-label="휴무 알람 시간">
-        <label class="switch"><input type="checkbox" id="on-off" data-type="off"><span></span></label>
-      </div>
+      <div class="group-title">근무별 알람 · 여러 개 추가 가능</div>
+      <div id="typeAlarms"></div>
     </div>
 
     <div class="group">
@@ -396,6 +393,20 @@
       <div class="drow">
         <span>진동</span>
         <label class="switch"><input type="checkbox" id="vibToggle"><span></span></label>
+      </div>
+      <div id="ringGroup" style="display:none">
+        <div class="drow">
+          <span>알람음<em class="tiny" id="ringName" style="display:block;font-style:normal;margin-top:1px">기본 알람음</em></span>
+          <button id="btnRingtone" class="mini-btn">선택</button>
+        </div>
+        <div class="drow">
+          <span>점점 크게 울리기<em class="tiny" style="display:block;font-style:normal;margin-top:1px">8초 동안 15% → 100%</em></span>
+          <label class="switch"><input type="checkbox" id="fadeToggle"><span></span></label>
+        </div>
+        <div class="drow">
+          <span>백그라운드 자동 동기화</span>
+          <span class="tiny" id="bgState">6시간마다</span>
+        </div>
       </div>
       <div class="drow">
         <span>스누즈</span>
@@ -452,10 +463,10 @@
       </div>
       <button id="btnNativePerm" class="ghost-btn" style="margin-top:8px">권한 한 번에 확인하기</button>
       <button id="btnNativeTest" class="ghost-btn">10초 뒤 테스트 알람 (짧은 진동만 · 소리 없음)</button>
-      <p class="hint">울리면 <b>잠금을 풀지 않고</b> 잠금화면 위 알람 화면에서 <b>한 번 눌러</b> 바로 끌 수 있어요. 그러려면 위 네 항목이 모두 켜져 있어야 해요. 꺼져 있으면 잠금화면에 <b>알림 카드만</b> 뜨고, 그때는 카드의 <b>끄기</b> 버튼을 누르거나 카드를 옆으로 밀어도 알람이 꺼져요(잠금 해제 필요 없음). 테스트는 꼭 <b>화면을 잠근 상태</b>에서 해 보세요.</p>
+      <p class="hint">울리면 <b>잠금을 풀지 않고</b> 잠금화면 위 알람 화면의 <b>알람 해제</b> 버튼을 누르면 바로 꺼져요. 그러려면 위 네 항목이 모두 켜져 있어야 해요. 꺼져 있으면 잠금화면에 <b>알림 카드만</b> 뜨고, 그때는 카드의 <b>끄기</b> 버튼을 누르거나 카드를 옆으로 밀어도 알람이 꺼져요(잠금 해제 필요 없음). 테스트는 꼭 <b>화면을 잠근 상태</b>에서 해 보세요.</p>
     </div>
 
-    <div class="foot-note">교대 알람 v1.4 · 교대달력 읽기 전용 연동</div>
+    <div class="foot-note">교대 알람 v2.0 · 교대달력 읽기 전용 연동</div>
   </div>
 </div>
 
@@ -587,16 +598,17 @@ const LS = { settings:'sa_settings_v1', overrides:'sa_overrides_v1', cloud:'sa_c
 const DEFAULT_SETTINGS = {
   master: true,
   types: {
-    day:      { on:true,  time:'05:20' },
-    night:    { on:true,  time:'16:30' },
-    overtime: { on:true,  time:'05:20' },
-    off:      { on:false, time:'08:00' }
+    day:      { on:true,  time:'05:20', alarms:[{ id:'a1', time:'05:20', mode:'sound', enabled:true }] },
+    night:    { on:true,  time:'16:30', alarms:[{ id:'a1', time:'16:30', mode:'sound', enabled:true }] },
+    overtime: { on:true,  time:'05:20', alarms:[{ id:'a1', time:'05:20', mode:'sound', enabled:true }] },
+    off:      { on:false, time:'08:00', alarms:[{ id:'a1', time:'08:00', mode:'sound', enabled:true }] }
   },
   sound: 'bell',
   volume: 70,
   vibrate: true,
+  fadeIn: false,
   topic: DEFAULT_TOPIC,
-  v: 1
+  v: 2
 };
 
 function readJSON(key, fallback){
@@ -614,7 +626,12 @@ let settings = (() => {
   Object.assign(s, saved);
   s.types = s.types || {};
   for (const k of Object.keys(DEFAULT_SETTINGS.types)){
-    s.types[k] = Object.assign({}, DEFAULT_SETTINGS.types[k], (saved.types||{})[k] || {});
+    const def = DEFAULT_SETTINGS.types[k];
+    const raw = (saved.types||{})[k] || {};
+    const cfg = Object.assign({}, def, raw);
+    // v1(단일 time) → v2(alarms 배열) 자동 마이그레이션: 주간 05:20 / 야간 16:30 그대로 유지
+    cfg.alarms = normAlarmList(raw.alarms, raw.time || def.time);
+    s.types[k] = mirrorTypeTime(cfg);
   }
   s.volume = Math.max(0, Math.min(100, Number(s.volume) || 0));
   return s;
@@ -687,19 +704,70 @@ function shiftSpan(s){
 }
 
 /* ---------- 알람 계산 ---------- */
+const TYPE_ORDER = ['day','night','overtime','off'];
+
 function typeCfg(type){ return settings.types[type] || settings.types.day; }
 
-function alarmFor(dateStr){
+function normTime(t, fallback){
+  const v = String(t || '').trim();
+  if (!/^([01]?\d|2[0-3]):([0-5]\d)$/.test(v)) return fallback || '07:00';
+  const [h,m] = v.split(':');
+  return String(Number(h)).padStart(2, '0') + ':' + m;
+}
+/** 알람 배열 정리. 없으면 예전 단일 시간(legacyTime)으로 한 건 만든다. */
+function normAlarmList(list, legacyTime){
+  const src = Array.isArray(list) ? list : [];
+  const out = src.filter(a => a && typeof a === 'object').map((a, i) => ({
+    id: a.id ? String(a.id) : ('a' + (i + 1)),
+    time: normTime(a.time, legacyTime),
+    mode: a.mode === 'vibrate' ? 'vibrate' : 'sound',
+    enabled: a.enabled !== false
+  }));
+  if (!out.length) out.push({ id:'a1', time: normTime(legacyTime, '07:00'), mode:'sound', enabled:true });
+  return out;
+}
+/** 대표 시각(cfg.time)은 첫 번째 켜진 알람 시각을 따라간다(예전 화면·설정과 호환). */
+function mirrorTypeTime(cfg){
+  const list = (cfg.alarms || []).slice().sort((a,b) => a.time.localeCompare(b.time));
+  const first = list.find(a => a.enabled) || list[0];
+  if (first) cfg.time = first.time;
+  return cfg;
+}
+function typeAlarms(type){
+  return (typeCfg(type).alarms || []).slice().sort((a,b) => a.time.localeCompare(b.time));
+}
+function alarmModeText(mode){ return mode === 'vibrate' ? '진동만' : '소리+진동'; }
+
+/** 그 날짜에 실제로 울릴 알람 전부(시각 순). 날짜 예외는 첫 알람에만 적용된다. */
+function alarmsFor(dateStr){
   const s = shiftFor(dateStr);
   const cfg = typeCfg(s.type);
   const ov = overrides[dateStr];
-  const on = ov ? !!ov.on : !!cfg.on;
-  const time = (ov && ov.time) || cfg.time || '07:00';
-  const [hh,mm] = time.split(':').map(Number);
+  if (!cfg.on && !(ov && ov.on)) return [];
   const d = parseD(dateStr);
-  const ts = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hh, mm, 0, 0).getTime();
-  return { date: dateStr, time, on, ts, type: s.type, note: s.note,
-           label: shiftLabel(s), override: !!ov, followed: s.modified };
+  const out = [];
+  typeAlarms(s.type).forEach((al, i) => {
+    let on = !!al.enabled, time = al.time;
+    if (i === 0 && ov){ on = !!ov.on; if (ov.time) time = ov.time; }
+    if (!on) return;
+    const [hh,mm] = normTime(time, al.time).split(':').map(Number);
+    const ts = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hh, mm, 0, 0).getTime();
+    out.push({ date: dateStr, time: normTime(time, al.time), on: true, ts, type: s.type, note: s.note,
+               label: shiftLabel(s), override: i === 0 && !!ov, followed: s.modified,
+               mode: al.mode || 'sound', slot: i + 1, alarmId: al.id });
+  });
+  return out;
+}
+
+/** 대표 알람 한 건(그 날짜의 가장 이른 알람). 없으면 꺼진 상태로 돌려준다. */
+function alarmFor(dateStr){
+  const list = alarmsFor(dateStr);
+  if (list.length) return Object.assign({ count: list.length }, list[0]);
+  const s = shiftFor(dateStr);
+  const first = typeAlarms(s.type)[0];
+  return { date: dateStr, time: first ? first.time : '07:00', on: false, ts: 0, type: s.type,
+           note: s.note, label: shiftLabel(s), override: false, followed: s.modified,
+           mode: first ? first.mode : 'sound', slot: 1, count: 0 };
 }
 
 function nextAlarm(now){
@@ -711,8 +779,9 @@ function nextAlarm(now){
   if (!settings.master) return null;
   const today = new Date();
   for (let i = 0; i < 40; i++){
-    const a = alarmFor(dstr(addDays(today, i)));
-    if (a.on && a.ts > now) return a;
+    for (const a of alarmsFor(dstr(addDays(today, i)))){
+      if (a.ts > now) return a;
+    }
   }
   return null;
 }
@@ -732,11 +801,26 @@ function nativeAlarmList(){
   const out = [];
   for (let i = 0; i < 14; i++){
     const ds = dstr(addDays(new Date(), i));
-    const a = alarmFor(ds);
-    if (!a.on || a.ts < now - 60000) continue;
-    out.push({ id: ds + '|' + a.time, date: ds, time: a.time, label: a.label, ts: a.ts });
+    for (const a of alarmsFor(ds)){
+      if (a.ts < now - 60000) continue;
+      out.push({ id: ds + '|slot_' + a.slot, date: ds, time: a.time, label: a.label,
+                 ts: a.ts, mode: a.mode || 'sound' });
+    }
   }
   return out;
+}
+
+/** 네이티브 백그라운드 동기화에 넘기는 근무별 알람 규칙(6시간마다 스스로 재계산). */
+function nativeConfig(){
+  const types = {};
+  for (const k of TYPE_ORDER){
+    const cfg = settings.types[k];
+    types[k] = {
+      on: !!cfg.on,
+      alarms: (cfg.alarms || []).map(a => ({ time: a.time, mode: a.mode || 'sound', enabled: a.enabled !== false }))
+    };
+  }
+  return { topic: settings.topic || DEFAULT_TOPIC, types, master: !!settings.master, overrides };
 }
 
 let nativeSyncAt = 0;
@@ -746,6 +830,7 @@ function nativeSync(force){
   if (!force && now - nativeSyncAt < 3000) return;
   nativeSyncAt = now;
   try{ nativeAlarm.syncAlarms(JSON.stringify(nativeAlarmList())); }catch(e){}
+  try{ nativeAlarm.syncConfig && nativeAlarm.syncConfig(JSON.stringify(nativeConfig())); }catch(e){}
 }
 
 function nativeStatus(){
@@ -838,6 +923,20 @@ function renderNativeStatus(){
 
   const btn = $('btnNativePerm');
   if (btn) btn.textContent = bad ? '권한 한 번에 확인하기' : '권한 다시 확인';
+
+  /* 알람음 · 점점 크게 · 백그라운드 동기화 */
+  const ringName = $('ringName');
+  if (ringName) ringName.textContent = st.ringtone ? st.ringtone : '기본 알람음';
+  const fadeBox = $('fadeToggle');
+  if (fadeBox && typeof st.fadeIn === 'boolean') fadeBox.checked = st.fadeIn;
+  const bg = $('bgState');
+  if (bg){
+    const at = st.bgSyncAt ? new Date(st.bgSyncAt) : null;
+    bg.textContent = st.bgSync
+      ? '켜짐 · 6시간마다' + (at ? ` (마지막 ${pad(at.getHours())}:${pad(at.getMinutes())})` : '')
+      : '꺼짐';
+    bg.style.color = st.bgSync ? '#6FBF73' : '#FFB020';
+  }
 }
 
 /* ---------- 화면 ---------- */
@@ -870,19 +969,22 @@ function renderClock(){
   const pill = $('todayPill');
   pill.className = 'pill ' + s.type;
   pill.textContent = '오늘 ' + shiftLabel(s) + (shiftSpan(s) ? ' · ' + shiftSpan(s) : '');
-  const a = alarmFor(t);
-  const passed = a.ts < Date.now();
-  $('todayNote').textContent = a.on ? (passed ? `오늘 알람 ${a.time} 지남` : `오늘 알람 ${a.time}`) : '오늘 알람 없음';
+  const todayList = alarmsFor(t);
+  const a = todayList.length ? todayList[0] : alarmFor(t);
+  const passed = a.on && a.ts < Date.now();
+  const more = todayList.length > 1 ? ` 외 ${todayList.length - 1}개` : '';
+  $('todayNote').textContent = a.on ? (passed ? `오늘 알람 ${a.time}${more} 지남` : `오늘 알람 ${a.time}${more}`) : '오늘 알람 없음';
 
   const tmr = dstr(addDays(now, 1));
   const s2 = shiftFor(tmr);
   const a2 = alarmFor(tmr);
+  const tmrList = alarmsFor(tmr);
   const row = $('tomorrowRow');
   row.innerHTML = `<span>내일 ${mdText(tmr)}(${WD[parseD(tmr).getDay()]})</span>`
     + `<span class="badge ${badgeClass(s2)}">${(SHIFT_META[s2.type]||SHIFT_META.off).short}</span>`
     + `<b>${shiftLabel(s2)}</b>`
     + (shiftSpan(s2) ? `<span style="color:#7E8A9E">${shiftSpan(s2)}</span>` : '')
-    + `<span class="al">${a2.on ? '⏰ ' + a2.time : '알람 없음'}</span>`;
+    + `<span class="al">${a2.on ? '⏰ ' + a2.time + (tmrList.length > 1 ? ` +${tmrList.length - 1}` : '') : '알람 없음'}</span>`;
 }
 
 function countdownText(diff){
@@ -936,7 +1038,8 @@ function renderList(){
   for (let i = 0; i < 14; i++){
     const ds = dstr(addDays(today, i));
     const s = shiftFor(ds);
-    const a = alarmFor(ds);
+    const list = alarmsFor(ds);
+    const a = list.length ? list[0] : alarmFor(ds);
     const d = parseD(ds);
     const isToday = i === 0;
     const passed = a.ts < Date.now();
@@ -946,7 +1049,7 @@ function renderList(){
         <div class="dr-date"><b>${mdText(ds)}</b><span>${WD[d.getDay()]}</span></div>
         <div class="dr-shift"><span class="badge ${badgeClass(s)}">${(SHIFT_META[s.type]||SHIFT_META.off).short}</span>
           <em class="${s.note ? '' : 'muted'}">${rowText(s)}</em></div>
-        <div class="${cls}">${a.on ? a.time + (a.override ? '<span class="ov">★</span>' : '') : '없음'}</div>
+        <div class="${cls}" title="${a.on ? (list.length > 1 ? list.map(x => x.time).join(', ') + ' 알람' : a.time + ' 알람') : '알람 없음'}">${a.on ? a.time + (list.length > 1 ? `<span class="more">+${list.length - 1}</span>` : '') + (a.override ? '<span class="ov">★</span>' : '') : '없음'}</div>
         <div class="dr-chev">›</div>
       </button>`);
   }
@@ -1028,8 +1131,16 @@ function classicBurst(when){
 
 function strike(){ settings.sound === 'classic' ? classicBurst(0) : bellStrike(0); }
 
-function startAudioRing(){
+function startAudioRing(mode){
   stopAudio();
+  if (mode === 'vibrate'){
+    // 진동 전용 알람: 벨소리 없이 진동만 반복
+    if (navigator.vibrate){
+      try{ navigator.vibrate([500, 260, 500]); }catch(e){}
+      vibTimer = setInterval(() => { try{ navigator.vibrate([500, 260, 500]); }catch(e){} }, 1800);
+    }
+    return;
+  }
   strike();
   ringTimer = setInterval(strike, settings.sound === 'classic' ? 1250 : 2100);
   if (settings.vibrate && navigator.vibrate){
@@ -1047,17 +1158,17 @@ function stopAudio(){
 function fireFrom(a){
   if (ringing) return;
   ringing = true;
-  ringInfo = { date:a.date, time:a.time, type:a.type, label:a.label || '알람', note:a.note || '' };
+  ringInfo = { date:a.date, time:a.time, type:a.type, label:a.label || '알람', note:a.note || '', mode:a.mode || 'sound' };
   $('ringTime').textContent = a.time;
-  $('ringLabel').textContent = ringInfo.label + ' 알람';
+  $('ringLabel').textContent = ringInfo.label + ' 알람' + (ringInfo.mode === 'vibrate' ? ' · 진동' : '');
   $('ringNote').textContent = [relativeDay(a.date), mdText(a.date) + '(' + WD[parseD(a.date).getDay()] + ')', a.note].filter(Boolean).join(' · ');
   $('toast').classList.remove('on');
   const ov = $('ringOverlay');
   ov.classList.remove('hidden');
-  startAudioRing();
+  startAudioRing(ringInfo.mode);
   requestWake(true);
   notifyAlarm(ringInfo, a.time);
-  const key = a.date + '|' + a.time;
+  const key = a.date + '|' + (a.slot || 1) + '|' + a.time;
   firedKeys[key] = Date.now(); saveFired();
   refreshAll();
 }
@@ -1097,11 +1208,11 @@ function checkFire(now){
   const base = new Date();
   for (const off of [-1, 0, 1]){
     const ds = dstr(addDays(base, off));
-    const a = alarmFor(ds);
-    if (!a.on) continue;
-    if (now >= a.ts && now - a.ts <= GRACE){
-      const key = ds + '|' + a.time;
-      if (!firedKeys[key]) { fireFrom(a); return; }
+    for (const a of alarmsFor(ds)){
+      if (now >= a.ts && now - a.ts <= GRACE){
+        const key = ds + '|' + a.slot + '|' + a.time;
+        if (!firedKeys[key]) { fireFrom(a); return; }
+      }
     }
   }
 }
@@ -1371,16 +1482,63 @@ $('clockOverlay').addEventListener('click', e => { if (e.target === $('clockOver
 $('btnHelp').addEventListener('click', () => $('helpBody').classList.toggle('open'));
 
 /* 설정 시트 */
+/* 근무별 알람 목록 — 주간/야간/특근/휴무 각각 여러 개 알람을 추가·삭제·ON/OFF */
+function renderTypeAlarms(){
+  const host = $('typeAlarms');
+  if (!host) return;
+  host.innerHTML = TYPE_ORDER.map(type => {
+    const cfg = settings.types[type];
+    const meta = SHIFT_META[type];
+    const sub = type === 'day' ? '07:00 출근' : type === 'night' ? '19:00 출근'
+      : type === 'overtime' ? '출근 시각 미정 · 주간 기준' : '기본 꺼짐';
+    const slots = typeAlarms(type).map((a, i) => {
+      const idAttr = i === 0 ? ` id="time-${type}"` : ` id="time-${type}-${a.id}"`;
+      return `<div class="slot${cfg.on ? '' : ' dim'}" data-type="${type}" data-id="${a.id}">
+          <input type="time" class="slot-time"${idAttr} value="${a.time}" step="60" aria-label="${meta.label} 알람 시간">
+          <button class="mode-btn${a.mode === 'vibrate' ? ' vib' : ''}" data-mode="${a.mode}" title="울림 방식 (누르면 바뀜)">${alarmModeText(a.mode)}</button>
+          <label class="switch sm"><input type="checkbox" class="slot-on"${a.enabled ? ' checked' : ''} aria-label="${a.time} 알람 켜기"><span></span></label>
+          ${typeAlarms(type).length > 1 ? '<button class="slot-del" title="이 알람 삭제" aria-label="알람 삭제">✕</button>' : ''}
+        </div>`;
+    }).join('');
+    return `<div class="tblock" data-type="${type}">
+        <div class="tset-head">
+          <span class="badge ${meta.badge}">${meta.short}</span>
+          <div class="tset-name">${meta.label}<em>${sub}</em></div>
+          <label class="switch"><input type="checkbox" class="t-on" id="on-${type}"${cfg.on ? ' checked' : ''} aria-label="${meta.label} 알람 켜기"><span></span></label>
+        </div>
+        <div class="slots">${slots || '<div class="slot-empty">알람 없음 · 아래에서 추가하세요</div>'}</div>
+        <button class="slot-add" data-type="${type}">＋ ${meta.label} 알람 추가</button>
+      </div>`;
+  }).join('');
+}
+
+/** 알람 규칙을 저장하고(대표 시각 미러 포함) 화면·네이티브 예약을 다시 맞춘다. */
+function persistTypes(msg){
+  for (const k of TYPE_ORDER) mirrorTypeTime(settings.types[k]);
+  writeJSON(LS.settings, settings);
+  renderTypeAlarms();
+  refreshAll();
+  nativeSync(true);
+  if (msg) toast(msg);
+}
+function nextAlarmId(cfg){
+  let n = 1;
+  const ids = new Set((cfg.alarms || []).map(a => a.id));
+  while (ids.has('a' + n)) n++;
+  return 'a' + n;
+}
+function addMinutes(hm, add){
+  const [h,m] = normTime(hm, '07:00').split(':').map(Number);
+  const total = (h * 60 + m + add + 1440) % 1440;
+  return pad(Math.floor(total / 60)) + ':' + pad(total % 60);
+}
+
 function openSettings(){
   settings.types && syncSettingsUI();
   $('settingsOverlay').classList.remove('hidden');
 }
 function syncSettingsUI(){
-  for (const type of Object.keys(DEFAULT_SETTINGS.types)){
-    const t = $('time-' + type), on = $('on-' + type);
-    if (t) { t.value = settings.types[type].time; t.disabled = !settings.types[type].on; }
-    if (on) on.checked = !!settings.types[type].on;
-  }
+  renderTypeAlarms();
   $('soundSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.sound === settings.sound));
   $('volRange').value = settings.volume;
   $('volTxt').textContent = settings.volume + '%';
@@ -1424,16 +1582,31 @@ if (isNative()){
     try{ nativeAlarm.testAlarmIn(10); }catch(e){}
     toast('10초 뒤 짧게 진동해요 · 지금 화면을 잠가 두세요');
   });
+  /* 알람음 선택(폰의 알람음·알림음) · 점점 크게 */
+  const ringGroup = $('ringGroup');
+  if (ringGroup) ringGroup.style.display = 'block';
+  const ringBtn = $('btnRingtone');
+  if (ringBtn) ringBtn.addEventListener('click', () => {
+    try{ nativeAlarm.pickRingtone(); }catch(e){ toast('알람음 선택을 열 수 없어요'); }
+  });
+  const fade = $('fadeToggle');
+  if (fade) fade.addEventListener('change', () => {
+    settings.fadeIn = fade.checked;
+    writeJSON(LS.settings, settings);
+    try{ nativeAlarm.setFadeIn(!!settings.fadeIn); }catch(e){}
+    toast(fade.checked ? '처음엔 작게, 8초 동안 점점 크게 울려요' : '한 번에 정한 음량으로 울려요');
+  });
   const clockTitle = $('clockOverlay').querySelector('h2');
   if (clockTitle) clockTitle.textContent = '⏰ 네이티브 알람 상태';
   const foot = document.querySelector('.footer');
-  if (foot) foot.textContent = '교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v1.4 · 네이티브 알람';
+  if (foot) foot.textContent = '교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.0 · 네이티브 알람';
   $('btnHelp').textContent = 'ℹ️ 이 앱은 닫아도 알람이 울려요 — 확인 사항';
   $('helpBody').innerHTML = '<b>이 앱은 폰의 알람으로 직접 예약</b>하기 때문에 앱을 닫거나 화면이 잠겨 있어도 정확한 시각에 울려요.'
     + '<ol>'
-    + '<li>목록의 예정 알람 14일치가 폰 알람으로 자동 등록돼요. 근무·휴가가 바뀌면 앱을 여는 즉시 다시 맞춰요.</li>'
+    + '<li>목록의 예정 알람 14일치가 폰 알람으로 자동 등록돼요. 주간·야간마다 알람을 여러 개 둘 수 있고(예: 05:20 진동 + 05:21 소리), 알람마다 <b>진동만 / 소리+진동</b>을 고를 수 있어요.</li>'
+    + '<li>앱을 열지 않아도 <b>6시간마다 백그라운드에서 교대달력을 확인</b>해 바뀐 근무·휴가를 알람에 다시 반영해요. 설정에서 알람음(폰의 알람음·알림음)과 <b>점점 크게 울리기</b>도 고를 수 있어요.</li>'
     + '<li><span class="kb">⚙️ 설정 → 안드로이드 네이티브 알람</span>에서 알림 · 정확한 알람 · <b>잠금화면 전체화면 알림</b> · 배터리 예외를 모두 켜 주세요. 잠금화면 전체화면 알림이 꺼져 있으면 잠금화면에 알람 화면이 뜨지 않고 알림만 떠요.</li>'
-    + '<li>울리면 잠금을 풀지 않아도 잠금화면 위에 알람 화면이 떠요. <b>한 번 누르면 바로 꺼져요</b>(5분 뒤 다시는 별도 버튼). 만약 알람 화면 없이 <b>알림으로만</b> 떴다면 알림의 <b>끄기</b> 버튼을 누르거나 알림을 옆으로 밀면 그대로 꺼져요(잠금 해제 필요 없음).</li>'
+    + '<li>울리면 잠금을 풀지 않아도 잠금화면 위에 알람 화면이 떠요. <b>알람 해제</b> 버튼을 누르면 바로 꺼져요(5분 뒤 다시는 별도 버튼). 만약 알람 화면 없이 <b>알림으로만</b> 떴다면 알림의 <b>끄기</b> 버튼을 누르거나 알림을 옆으로 밀면 그대로 꺼져요(잠금 해제 필요 없음).</li>'
     + '<li>폰 제조사(삼성 등)의 <b>절전·백그라운드 제한</b>에서 이 앱을 예외로 두면 더 확실해요.</li>'
     + '<li>울리지 않는 것 같으면 설정의 <b>10초 뒤 테스트 알람</b>으로 먼저 확인해 보세요. 테스트 알람은 <b>소리 없이 짧게 진동만</b> 울리고 1분 뒤 스스로 꺼져요.</li>'
     + '</ol>';
@@ -1449,23 +1622,65 @@ $('settingsOverlay').addEventListener('click', e => {
   if (e.target === $('settingsOverlay')) { $('settingsOverlay').classList.add('hidden'); refreshAll(); }
 });
 
-for (const type of Object.keys(DEFAULT_SETTINGS.types)){
-  const t = $('time-' + type), on = $('on-' + type);
-  t.addEventListener('change', () => {
-    if (!t.value) return;
-    settings.types[type].time = t.value;
-    writeJSON(LS.settings, settings);
-    refreshAll();
-    toast(`${SHIFT_META[type].label} 알람 ${t.value}로 바꿨어요`);
-  });
-  on.addEventListener('change', () => {
-    settings.types[type].on = on.checked;
-    t.disabled = !on.checked;
-    writeJSON(LS.settings, settings);
-    refreshAll();
-    toast(`${SHIFT_META[type].label} 알람 ${on.checked ? '켜짐' : '꺼짐'}`);
-  });
-}
+/* 근무별 알람 편집 (위임) */
+$('typeAlarms').addEventListener('change', e => {
+  const el = e.target;
+  const block = el.closest('.tblock');
+  if (!block) return;
+  const type = block.dataset.type;
+  const cfg = settings.types[type];
+  const label = SHIFT_META[type].label;
+  if (el.classList.contains('t-on')){
+    cfg.on = el.checked;
+    persistTypes(`${label} 알람 ${el.checked ? '켜짐' : '꺼짐'}`);
+    return;
+  }
+  const slot = el.closest('.slot');
+  if (!slot) return;
+  const al = (cfg.alarms || []).find(a => a.id === slot.dataset.id);
+  if (!al) return;
+  if (el.classList.contains('slot-on')){
+    al.enabled = el.checked;
+    persistTypes(`${label} ${al.time} 알람 ${el.checked ? '켜짐' : '꺼짐'}`);
+  } else if (el.classList.contains('slot-time')){
+    if (!el.value) return;
+    al.time = normTime(el.value, al.time);
+    persistTypes(`${label} 알람 ${al.time}로 바꿨어요`);
+  }
+});
+$('typeAlarms').addEventListener('click', e => {
+  const modeBtn = e.target.closest('.mode-btn');
+  const delBtn = e.target.closest('.slot-del');
+  const addBtn = e.target.closest('.slot-add');
+  const block = e.target.closest('.tblock');
+  if (!block) return;
+  const type = block.dataset.type;
+  const cfg = settings.types[type];
+  const label = SHIFT_META[type].label;
+  if (modeBtn){
+    const slot = modeBtn.closest('.slot');
+    const al = (cfg.alarms || []).find(a => a.id === slot.dataset.id);
+    if (!al) return;
+    al.mode = al.mode === 'vibrate' ? 'sound' : 'vibrate';
+    persistTypes(`${label} ${al.time} · ${alarmModeText(al.mode)}`);
+    return;
+  }
+  if (delBtn){
+    const slot = delBtn.closest('.slot');
+    if ((cfg.alarms || []).length <= 1){ toast('알람은 최소 하나는 남겨 주세요'); return; }
+    cfg.alarms = cfg.alarms.filter(a => a.id !== slot.dataset.id);
+    persistTypes(`${label} 알람 하나를 지웠어요`);
+    return;
+  }
+  if (addBtn){
+    if ((cfg.alarms || []).length >= 6){ toast('한 근무에 알람은 6개까지예요'); return; }
+    const list = typeAlarms(type);
+    const last = list[list.length - 1];
+    const time = last ? addMinutes(last.time, 1) : (cfg.time || '07:00');
+    cfg.alarms.push({ id: nextAlarmId(cfg), time, mode: 'sound', enabled: true });
+    persistTypes(`${label} 알람 ${time} 추가했어요`);
+  }
+});
 
 $('soundSeg').querySelectorAll('button').forEach(b => {
   b.addEventListener('click', () => {
@@ -1527,7 +1742,8 @@ function openDateSheet(dateStr){
     ? `지금은 ${mdText(dateStr)}만의 예외 알람이에요. 해제하면 ${SHIFT_META[s.type].label} 기본값(${cfg.time}, ${cfg.on ? '켜짐' : '꺼짐'})을 따라가요.`
     : (s.note ? `교대달력 메모: ${s.note}. ` : '') +
       (s.type === 'overtime' ? '특근은 주간 출근 기준으로 잡혀 있어요. 실제 출근 시각에 맞게 바꿔 주세요.' :
-       `기본값은 ${SHIFT_META[s.type].label} ${cfg.time} ${cfg.on ? '켜짐' : '꺼짐'} 예요.`);
+       `기본값은 ${SHIFT_META[s.type].label} ${cfg.time} ${cfg.on ? '켜짐' : '꺼짐'} 예요.`) +
+      (typeAlarms(s.type).length > 1 ? ` 여기서는 첫 알람만 바뀌어요 · 나머지는 설정의 근무별 알람에서.` : '');
   $('dateOverlay').classList.remove('hidden');
 }
 $('btnCloseDate').addEventListener('click', () => $('dateOverlay').classList.add('hidden'));
@@ -1653,7 +1869,7 @@ setInterval(tick, 1000);
 
 /* 테스트/점검용 훅 */
 window.__alarm = {
-  shiftFor, alarmFor, nextAlarm, baseShift, teamFor,
+  shiftFor, alarmFor, alarmsFor, typeAlarms, nextAlarm, baseShift, teamFor,
   get settings(){ return settings; },
   get cloud(){ return cloud; },
   get overrides(){ return overrides; },

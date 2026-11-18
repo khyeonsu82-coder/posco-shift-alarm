@@ -41,6 +41,7 @@ object AlarmUi {
             putExtra(AlarmScheduler.EXTRA_TIME, alarm.time)
             putExtra(AlarmScheduler.EXTRA_LABEL, alarm.label)
             putExtra(AlarmScheduler.EXTRA_TS, alarm.ts)
+            putExtra(AlarmScheduler.EXTRA_MODE, ShiftAlarm.modeOf(alarm.mode))
             putExtra(EXTRA_LAUNCH_MODE, mode)
         }
 

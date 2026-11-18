@@ -9,14 +9,18 @@
 | 파일 | 역할 |
 |---|---|
 | `MainActivity.kt` | WebView + `NativeAlarm` 브릿지 + 권한 안내(알림/정확한 알람/전체화면 알림/다른 앱 위에 표시/배터리) |
-| `NativeAlarmBridge.kt` | 웹 ↔ 네이티브. `syncAlarms(json)`, `getStatus()`, `requestPermissions()`, `openFullScreenSettings()`, `openOverlaySettings()`, `testAlarmIn(s)` |
+| `NativeAlarmBridge.kt` | 웹 ↔ 네이티브. `syncAlarms(json)`, `syncConfig(json)`, `getStatus()`, `requestPermissions()`, `openFullScreenSettings()`, `openOverlaySettings()`, `testAlarmIn(s)`, `pickRingtone()`, `setFadeIn(on)` |
 | `AlarmScheduler.kt` | `setAlarmClock` 등록·취소, 5분 스누즈, 재부팅 후 재등록 |
 | `AlarmReceiver.kt` | 알람 시각 도달 → 서비스 기동 + 남은 알람 재등록 |
-| `AlarmService.kt` | 포그라운드 서비스: 시스템 알람음(USAGE_ALARM) 무한 반복 + 진동 + fullScreenIntent 알림 + 잠금화면 폴백 (테스트 알람은 짧은 진동만) |
-| `AlarmActivity.kt` | 잠금화면 위 전체화면 알람 UI (한 번 눌러 끄기 / 5분 뒤 다시 / 폰 잠금 해제) |
+| `AlarmService.kt` | 포그라운드 서비스: 고른 알람음(MediaPlayer, 반복) + 진동 + fullScreenIntent 알림 + 잠금화면 폴백. **진동 전용 알람**은 소리 없이, **점점 크게**는 8초 동안 15%→100% (테스트 알람은 짧은 진동만) |
+| `AlarmActivity.kt` | 잠금화면 위 전체화면 알람 UI (알람 해제 / 5분 뒤 다시 / 폰 잠금 해제) |
 | `AlarmOverlay.kt` | 전체화면 알림이 막힌 기기에서 "다른 앱 위에 표시"로 잠금화면 위에 그리는 마지막 보루 |
 | `Perms.kt` | 전체화면 알림·오버레이·배터리 권한 상태 확인과 설정 화면 직행 |
-| `BootReceiver.kt` | 부팅·업데이트·시간 변경 시 알람 재등록 |
+| `RingPrefs.kt` | 알람음 URI·이름, 점점 크게 설정 저장(SharedPreferences) |
+| `ShiftMath.kt` | 4조2교대 8일 주기·과거 사이클·조 편성·교대달력 예외를 Kotlin 으로 계산 |
+| `ShiftSync.kt` | 6시간마다 ntfy 를 읽어 근무·휴가를 갱신하고 14일치 알람을 다시 계산·예약 |
+| `ShiftSyncReceiver.kt` | `AlarmManager.setInexactRepeating` 이 깨우는 백그라운드 동기화 수신부 |
+| `BootReceiver.kt` | 부팅·업데이트·시간 변경 시 알람 재등록 + 주기 동기화 재등록 |
 | `assets/www/` | 배포본 웹앱 (index.html, manifest, sw, 아이콘) |
 
 ## 잠금화면에서 바로 끄기 (v1.3)
@@ -107,12 +111,37 @@ v1.3 을 실제 폰에서 시험한 뒤 현수 님이 요청한 세 가지와, �
 (네이티브 소스 점검 21항목 신규 — 원터치·테스트 진동·채널 v3·직접 실행 경로·versionCode).
 실기기 잠금화면 검증은 현수 님 폰에서 필요하다(APK `downloads/포스코교대알람-v1.4.apk`).
 
+## v2.0 (2026-11-19) — 여러 알람 · 알람음/점점 크게 · 백그라운드 자동 동기화
+
+현수 님이 요청한 네 가지를 한 번에 넣었다. 알람 화면 버튼 문구는 v1.5 의 **"알람 해제"** 그대로다.
+
+1. **근무별 복수 알람** — 주간/야간/특근/휴무마다 알람을 여러 개 두고 각각 시간·울림 방식·켜기/끄기를
+   바꿀 수 있다(예: 주간 `05:20 (진동만)` + `05:21 (소리+진동)`). 데이터는
+   `{ id, time, mode: "vibrate"|"sound", enabled }` 로 저장하고, 예정 알람은 **날짜 × 켜진 알람**마다
+   고유 id(`2026-11-19|slot_1`)로 `NativeAlarm.syncAlarms` 에 전달한다. v1.5 이하의 단일 시간 설정은
+   불러올 때 자동으로 알람 한 건으로 옮긴다(주간 05:20 / 야간 16:30 유지).
+2. **알람별 진동만 / 소리+진동** — `ShiftAlarm.mode` 로 전달해 `AlarmService` 가 `vibrate` 알람은
+   벨소리 없이 진동만 반복한다(테스트 알람과 달리 **해제할 때까지 계속**).
+3. **알람음 선택 · 점점 크게** — `NativeAlarm.pickRingtone()` 이 `ACTION_RINGTONE_PICKER` 를 열어
+   알람음(TYPE_ALARM)·알림음(TYPE_NOTIFICATION)·기본값 중에서 고르게 하고, 고른 URI 를
+   SharedPreferences 에 저장해 `MediaPlayer` 로 재생한다. **점점 크게**를 켜면 8초 동안 볼륨이
+   15% → 100% 로 올라간다(0.5초 × 16단계).
+4. **백그라운드 자동 동기화** — `ShiftSync` 가 6시간마다(`setInexactRepeating`, 하루 4회) 앱을 열지 않아도
+   `ntfy.sh/<동기화 코드>` 를 읽어 `customShifts`·`crewHistory` 를 갱신하고, `ShiftMath` 로 14일치 근무를
+   다시 계산해 알람을 재등록한다. `INTERNET` 권한 사용, 원본 교대달력은 쓰지 않는다(읽기 전용).
+   ntfy 보관이 비어 있으면 웹과 같은 기준 스냅샷으로 계산한다. 부팅·앱 시작 때도 주기 동기화를 다시 건다.
+
+검증: `test_app.py` 37/37 · `test_clock.py` 20/20 · `test_native.py` 80/80
+(네이티브 소스 점검에 v2.0 항목 11개 추가 — mode · 진동 전용 · 알람음 · 페이드 · 6시간 동기화 · INTERNET).
+APK: `downloads/포스코교대알람-v2.0.apk` (versionCode 7). 실기기 확인은 현수 님 폰에서.
+
 ## 웹앱과의 관계
 
 - 웹앱 JS 는 `window.NativeAlarm` 이 있을 때만 네이티브 경로를 쓴다. 브라우저(배포본)에서는
   기존 웹 알람·탁상시계 동작이 그대로 유지된다(`isNative()` 가드).
 - 네이티브 모드에서는 OS 알람이 울리므로 웹 JS 의 자체 울림(`checkFire`)은 건너뛴다(중복 울림 방지).
-- `refreshAll()` 때마다 향후 14일 예정 알람을 `{id, date, time, label, ts}` 로 넘겨 재등록한다.
+- `refreshAll()` 때마다 향후 14일 예정 알람을 `{id, date, time, label, ts, mode}` 로 넘겨 재등록하고,
+  `syncConfig({topic, types, master, overrides})` 로 근무별 알람 규칙을 넘겨 백그라운드 동기화가 같은 규칙을 쓰게 한다.
 - `⏰ 시계앱` 시트는 네이티브 모드에서 "네이티브 알람 예약됨 + 권한 상태"로 바뀐다.
 - 네이티브 모드(v1.1~)에서는 탁상시계 버튼·안내를 감춰 메인 액션이 `🔔 소리 테스트`·`⏰ 알람 상태` 두 개만 남는다(웹 배포본은 기존 탁상시계 유지).
 - 설정 시트(`⚙️ 설정 → 안드로이드 네이티브 알람`)에 **잠금화면 전체화면 알림 / 다른 앱 위에 표시** 상태와
@@ -136,4 +165,4 @@ sh build_local.sh
    (기기에 따라 `다른 앱 위에 표시`도 함께 켜면 잠금화면 알람이 더 확실하다.)
 3. `10초 뒤 테스트 알람`으로 **화면을 잠근 상태에서** 잠금화면 위 알람 화면이 뜨는지 확인한다.
 
-minSdk 24 / targetSdk 34 / versionCode 5 / versionName 1.4
+minSdk 24 / targetSdk 34 / versionCode 7 / versionName 2.0

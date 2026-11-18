@@ -67,6 +67,11 @@
             </intent-filter>
         </receiver>
 
+        <!-- 6시간마다 교대달력을 확인해 알람을 다시 계산하는 백그라운드 동기화 -->
+        <receiver
+            android:name=".ShiftSyncReceiver"
+            android:exported="false" />
+
         <receiver
             android:name=".BootReceiver"
             android:exported="false">

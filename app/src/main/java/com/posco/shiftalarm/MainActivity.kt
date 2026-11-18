@@ -2,10 +2,12 @@ package com.posco.shiftalarm
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -22,6 +24,7 @@ class MainActivity : Activity() {
 
     companion object {
         private const val REQ_NOTIFICATIONS = 1001
+        private const val REQ_RINGTONE = 1002
         private const val URL_APP = "file:///android_asset/www/index.html"
         private const val PREF_UI = "shift_alarm_ui"
     }
@@ -46,7 +49,7 @@ class MainActivity : Activity() {
             allowContentAccess = true
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_DEFAULT
-            userAgentString = userAgentString + " PoscoShiftAlarm/1.4"
+            userAgentString = userAgentString + " PoscoShiftAlarm/2.0"
         }
         web.addJavascriptInterface(NativeAlarmBridge(this), "NativeAlarm")
         web.webChromeClient = WebChromeClient()
@@ -72,6 +75,11 @@ class MainActivity : Activity() {
         // 알림 채널을 미리 만들어 둔다(설정 화면에서 중요도까지 확인할 수 있게)
         try {
             AlarmService.ensureChannel(this)
+        } catch (e: Exception) {
+        }
+        // 앱을 열지 않아도 6시간마다 교대달력을 확인하는 백그라운드 동기화 (v2.0)
+        try {
+            ShiftSync.schedulePeriodic(this)
         } catch (e: Exception) {
         }
         maybeAskNotificationPermission()
@@ -201,6 +209,64 @@ class MainActivity : Activity() {
         Perms.openBatterySettings(this)
     }
 
+    /** 알람음 선택: 알람음(TYPE_ALARM) · 알림음(TYPE_NOTIFICATION) · 기본값. */
+    fun pickRingtone() {
+        val items = arrayOf("알람음에서 고르기", "알림음에서 고르기", "기본 알람음으로")
+        try {
+            AlertDialog.Builder(this)
+                .setTitle("알람음 선택")
+                .setItems(items) { _, which ->
+                    when (which) {
+                        0 -> openRingtonePicker(RingtoneManager.TYPE_ALARM)
+                        1 -> openRingtonePicker(RingtoneManager.TYPE_NOTIFICATION)
+                        else -> {
+                            RingPrefs.setRingtone(this, null)
+                            notifyWeb()
+                        }
+                    }
+                }
+                .setNegativeButton("취소", null)
+                .show()
+        } catch (e: Exception) {
+        }
+    }
+
+    private fun openRingtonePicker(type: Int) {
+        val i = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, type)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+            val cur = RingPrefs.uri(this@MainActivity)
+            if (cur != null) {
+                try {
+                    putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Uri.parse(cur))
+                } catch (e: Exception) {
+                }
+            }
+        }
+        try {
+            startActivityForResult(i, REQ_RINGTONE)
+        } catch (e: Exception) {
+            try {
+                startActivity(Intent(android.provider.Settings.ACTION_SOUND_SETTINGS))
+            } catch (e2: Exception) {
+            }
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQ_RINGTONE) return
+        if (resultCode != RESULT_OK || data == null) return
+        try {
+            @Suppress("DEPRECATION")
+            val uri = data.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            RingPrefs.setRingtone(this, uri)
+        } catch (e: Exception) {
+        }
+        notifyWeb()
+    }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -233,7 +299,7 @@ class MainActivity : Activity() {
         val o = JSONObject()
         try {
             o.put("native", true)
-            o.put("version", "1.4")
+            o.put("version", "2.0")
             o.put("scheduled", upcoming.size)
             o.put("next", upcoming.firstOrNull()?.ts ?: 0L)
             o.put("nextTime", upcoming.firstOrNull()?.time ?: "")
@@ -249,6 +315,12 @@ class MainActivity : Activity() {
             o.put("channelSound", Perms.channelHasSound(this))
             o.put("lockscreen", Perms.lockscreenNotificationsEnabled(this))
             o.put("snooze", AlarmStore.loadSnooze(this)?.ts ?: 0L)
+            o.put("ringtone", RingPrefs.title(this))
+            o.put("ringtoneUri", RingPrefs.uri(this) ?: "")
+            o.put("fadeIn", RingPrefs.fadeIn(this))
+            o.put("bgSync", true)
+            o.put("bgSyncAt", ShiftSync.lastSync(this))
+            o.put("bgSyncOk", ShiftSync.lastOk(this))
             // 마지막 알람이 실제로 어떻게 떴는지(진단)
             o.put("last", AlarmLog.json(this))
         } catch (e: Exception) {

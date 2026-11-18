@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 잠금화면 위 알람 화면 (v1.4) — 큰 시각 + 한 번 눌러 끄기 + 5분 뒤 다시 -->
+<!-- 잠금화면 위 알람 화면 (v1.5) — 큰 시각 + 알람 해제 + 5분 뒤 다시 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -50,22 +50,12 @@
         android:textColor="@color/dim"
         android:textSize="13sp" />
 
-    <TextView
-        android:id="@+id/alarmHint"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:gravity="center"
-        android:text="@string/alarm_hint"
-        android:textColor="@color/dim2"
-        android:textSize="12sp" />
-
     <Space
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
 
-    <!-- 한 번 눌러 끄기 (v1.4): 누르면 바로 꺼진다. 실수 방지를 위해 버튼을 크게 둔다 -->
+    <!-- 알람 해제 (v1.5): 누르면 바로 꺼진다. 버튼 라벨은 짧게 "알람 해제"만 둔다 -->
     <FrameLayout
         android:id="@+id/stopBox"
         android:layout_width="match_parent"

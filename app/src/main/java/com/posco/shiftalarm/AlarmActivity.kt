@@ -16,7 +16,11 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 
 /**
- * 잠금화면 위에 전체화면으로 뜨는 알람 화면 (v1.4).
+ * 잠금화면 위에 전체화면으로 뜨는 알람 화면 (v1.5).
+ *
+ * v1.5 에서 바꾼 것:
+ *  - 끄기 버튼 문구를 "한 번 눌러 알람 끄기" 에서 **"알람 해제"** 로 짧고 깔끔하게 바꿨다
+ *    (버튼 위의 긴 보조 문구도 없앴다). 누르면 그대로 꺼지는 원터치 동작은 v1.4 와 같다.
  *
  * v1.4 에서 바꾼 것:
  *  - 끄기 버튼을 **한 번 탭**으로 바꿨다(1.2초 길게 누르기 제거). 잠금을 풀지 않고 바로 꺼진다.
@@ -142,7 +146,8 @@ class AlarmActivity : Activity() {
         val time = i.getStringExtra(AlarmScheduler.EXTRA_TIME)
             ?.takeIf { it.isNotBlank() } ?: TimeFormat.hm(ts)
         val date = i.getStringExtra(AlarmScheduler.EXTRA_DATE) ?: ""
-        current = ShiftAlarm(id, date, time, label, ts)
+        val alarmMode = i.getStringExtra(AlarmScheduler.EXTRA_MODE)
+        current = ShiftAlarm(id, date, time, label, ts, ShiftAlarm.modeOf(alarmMode))
 
         // 어떤 경로(직접 실행 / 전체화면 알림)로 이 화면이 떴는지 진단 기록에 남긴다
         val mode = i.getStringExtra(AlarmUi.EXTRA_LAUNCH_MODE) ?: ""
@@ -191,10 +196,10 @@ class AlarmActivity : Activity() {
         }
     }
 
-    // ---------- 한 번 눌러 끄기 ----------
+    // ---------- 알람 해제(원터치 끄기) ----------
 
     private fun setupStop(box: View) {
-        // v1.4: 길게 누르기 대신 한 번 탭으로 즉시 끈다(스누즈 버튼은 그대로).
+        // v1.4: 길게 누르기 대신 한 번 탭으로 즉시 끈다(스누즈 버튼은 그대로). 라벨은 v1.5 부터 "알람 해제".
         box.setOnClickListener { stopAlarm() }
         try {
             val km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
@@ -258,7 +263,7 @@ class AlarmActivity : Activity() {
         }
     }
 
-    @Deprecated("알람 화면에서는 뒤로가기로 닫히지 않는다 (한 번 눌러 끄기 / 5분 뒤 다시 사용)")
+    @Deprecated("알람 화면에서는 뒤로가기로 닫히지 않는다 (알람 해제 / 5분 뒤 다시 사용)")
     override fun onBackPressed() {
         // 알람은 명시적으로 끄거나 스누즈해야 끝난다
     }

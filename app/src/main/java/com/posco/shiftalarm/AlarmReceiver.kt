@@ -22,7 +22,8 @@ class AlarmReceiver : BroadcastReceiver() {
         val time = intent.getStringExtra(AlarmScheduler.EXTRA_TIME) ?: TimeFormat.hm(System.currentTimeMillis())
         val ts = intent.getLongExtra(AlarmScheduler.EXTRA_TS, System.currentTimeMillis())
 
-        val alarm = ShiftAlarm(id, date, time, label, ts)
+        val mode = intent.getStringExtra(AlarmScheduler.EXTRA_MODE)
+        val alarm = ShiftAlarm(id, date, time, label, ts, ShiftAlarm.modeOf(mode))
 
         // ① 잠금화면 위 알람 화면 — 지금 바로(서비스를 거치지 않고) 띄운다.
         //    화면이 먼저 뜨면 AlarmActivity 가 서비스를 시작해 소리·진동이 함께 시작된다.

@@ -17,6 +17,7 @@ class BootReceiver : BroadcastReceiver() {
             Intent.ACTION_TIMEZONE_CHANGED -> {
                 try {
                     AlarmScheduler.scheduleAll(context)
+                    ShiftSync.schedulePeriodic(context)
                 } catch (e: Exception) {
                     // 다음 앱 실행 때 다시 등록된다
                 }
