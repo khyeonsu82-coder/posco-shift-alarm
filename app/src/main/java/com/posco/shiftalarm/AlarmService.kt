@@ -258,7 +258,13 @@ class AlarmService : Service() {
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0
             )
         } catch (e: Exception) {
-            // 알림은 이미 올라갔으므로 소리·진동은 계속 진행한다
+            // 알림은 이미 올라갔으므로 소리·진동은 계속 진행한다.
+            // (타입 없이 한 번 더 시도 — 둘 다 실패하면 시스템이 서비스를 내리지만,
+            //  그 경우에도 알림 카드는 남아 있어 잠금화면에서 끌 수 있다.)
+            try {
+                startForeground(notifId, notif)
+            } catch (e2: Exception) {
+            }
         }
 
         // ③ 소리·진동 (화면을 켜는 WakeLock 은 잡지 않는다)
