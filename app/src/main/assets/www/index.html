@@ -421,7 +421,7 @@
         <span>알람 울릴 때 화면 켜짐 유지</span>
         <span class="tiny" id="wakeState">—</span>
       </div>
-      <p class="hint">알람이 울릴 때 자동으로 요청돼요. 탁상시계 모드에서 계속 유지됩니다.</p>
+      <p class="hint" id="wakeHint">알람이 울릴 때 자동으로 요청돼요. 탁상시계 모드에서 계속 유지됩니다.</p>
     </div>
 
     <div class="group" id="nativeGroup" style="display:none">
@@ -1320,6 +1320,15 @@ $('btnSettings').addEventListener('click', openSettings);
 /* 네이티브 앱 전용 설정 (네이티브에서만 보임) */
 if (isNative()){
   $('nativeGroup').style.display = 'block';
+  /* 네이티브 앱은 폰 알람이 직접 울리므로 탁상시계가 필요 없다 → 버튼·안내를 감춰 2버튼만 남긴다 */
+  $('btnStandby').classList.add('hidden');
+  $('btnGoStandby').classList.add('hidden');
+  const actBar = document.querySelector('.actions');
+  if (actBar) actBar.style.gridTemplateColumns = 'repeat(2, 1fr)';
+  const clockLabel = $('btnClockApp').querySelector('span');
+  if (clockLabel) clockLabel.textContent = '알람 상태';
+  const wakeHint = $('wakeHint');
+  if (wakeHint) wakeHint.textContent = '알람이 울릴 때 화면을 켜 두도록 요청해요.';
   $('btnNativePerm').addEventListener('click', requestNativePermissions);
   $('btnNativeTest').addEventListener('click', () => {
     try{ nativeAlarm.testAlarmIn(10); }catch(e){}

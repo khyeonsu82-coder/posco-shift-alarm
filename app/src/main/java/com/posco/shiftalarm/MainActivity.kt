@@ -193,7 +193,7 @@ class MainActivity : Activity() {
         val o = JSONObject()
         try {
             o.put("native", true)
-            o.put("version", "1.0")
+            o.put("version", "1.1")
             o.put("scheduled", upcoming.size)
             o.put("next", upcoming.firstOrNull()?.ts ?: 0L)
             o.put("nextTime", upcoming.firstOrNull()?.time ?: "")
