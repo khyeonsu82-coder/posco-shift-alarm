@@ -20,12 +20,16 @@ object AlarmAudio {
     /** 볼륨을 올리기 전의 값. -1 이면 아직 올리지 않았다. */
     private var savedStreamVolume = -1
 
+    /** 지금 볼륨을 올려 쓰는 곳(알람 서비스·소리 테스트)의 수 — 마지막 하나가 끝날 때 되돌린다. */
+    private var holders = 0
+
     private fun audio(ctx: Context) =
         ctx.applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     /** 알람 스트림 볼륨을 최대로(설정이 켜져 있을 때만). 끄면 [restoreStreamVolume] 으로 되돌린다. */
     fun raiseStreamVolume(ctx: Context) {
         if (!RingPrefs.systemVolumeMax(ctx)) return
+        holders++
         try {
             val am = audio(ctx)
             val max = am.getStreamMaxVolume(AudioManager.STREAM_ALARM)
@@ -40,6 +44,8 @@ object AlarmAudio {
     }
 
     fun restoreStreamVolume(ctx: Context) {
+        if (holders > 0) holders--
+        if (holders > 0) return
         if (savedStreamVolume < 0) return
         try {
             audio(ctx).setStreamVolume(AudioManager.STREAM_ALARM, savedStreamVolume, 0)

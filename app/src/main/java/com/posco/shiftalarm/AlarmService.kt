@@ -517,11 +517,12 @@ class AlarmService : Service() {
 
     /** 설정한 알람음(없으면 시스템 기본 알람음)을 반복 재생한다. */
     private fun startSound() {
+        // 폰 알람 볼륨을 최대로(설정 시) — 한 번만 올리고 끌 때 한 번 되돌린다
+        AlarmAudio.raiseStreamVolume(this)
         // ① 고른 알람음을 MediaPlayer 로 — 음량·부스트·시작 방식을 모두 적용할 수 있다
         val mp = AlarmAudio.newPlayer(this)
         if (mp != null) {
             try {
-                AlarmAudio.raiseStreamVolume(this)
                 enhancer = AlarmAudio.boost(this, mp.audioSessionId)
                 val level = AlarmAudio.playerLevel(this)
                 val start = level * AlarmAudio.startLevel(this)
@@ -541,7 +542,6 @@ class AlarmService : Service() {
         // ② 폴백: Ringtone (부스트는 못 걸지만 소리는 난다)
         try {
             releasePlayer()
-            AlarmAudio.raiseStreamVolume(this)
             val fb = RingPrefs.alarmUri(this)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
