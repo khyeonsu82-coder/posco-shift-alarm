@@ -10,7 +10,7 @@ import org.json.JSONObject
 class NativeAlarmBridge(private val activity: MainActivity) {
 
     @JavascriptInterface
-    fun version(): String = "2.1"
+    fun version(): String = MainActivity.VERSION_NAME
 
     /** 예정 알람 14일치를 받아 저장하고 AlarmManager 에 다시 등록한다. */
     @JavascriptInterface
@@ -69,10 +69,45 @@ class NativeAlarmBridge(private val activity: MainActivity) {
         activity.runOnUiThread { activity.pickRingtone() }
     }
 
-    /** 점점 크게 울리기 on/off. */
+    /** 점점 크게 울리기 on/off (v2.1 호환 — 이제 시작 방식으로 저장된다). */
     @JavascriptInterface
     fun setFadeIn(on: Boolean) {
         RingPrefs.setFadeIn(activity, on)
+    }
+
+    /** 알람 음량(%) — 10~100 (v2.2). */
+    @JavascriptInterface
+    fun setVolume(pct: Int) {
+        RingPrefs.setVolume(activity, pct)
+    }
+
+    /** 소리를 더 키우는 부스트(dB) — 0 / 6 / 12 (v2.2). */
+    @JavascriptInterface
+    fun setBoost(db: Int) {
+        RingPrefs.setBoostDb(activity, db)
+    }
+
+    /** 시작 방식 — "full"(바로 최대) / "quick"(3초) / "slow"(8초) (v2.2). */
+    @JavascriptInterface
+    fun setStartMode(mode: String) {
+        RingPrefs.setStartMode(activity, mode)
+    }
+
+    /** 울리는 동안 폰의 알람 볼륨을 최대로 올렸다가 되돌릴지 (v2.2). */
+    @JavascriptInterface
+    fun setSystemVolumeMax(on: Boolean) {
+        RingPrefs.setSystemVolumeMax(activity, on)
+    }
+
+    /** 지금 설정(알람음·음량·부스트·시작 방식)으로 6초 소리 테스트 — 다시 누르면 멈춘다 (v2.2). */
+    @JavascriptInterface
+    fun testSound() {
+        activity.runOnUiThread { RingTester.toggle(activity) }
+    }
+
+    @JavascriptInterface
+    fun stopSound() {
+        activity.runOnUiThread { RingTester.stop() }
     }
 
     /** 알림 · 정확한 알람 · 전체화면 알림 · 다른 앱 위에 표시 · 배터리 예외를 차례로 안내한다. */

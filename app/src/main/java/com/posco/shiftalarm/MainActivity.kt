@@ -27,6 +27,9 @@ class MainActivity : Activity() {
         private const val REQ_RINGTONE = 1002
         private const val URL_APP = "file:///android_asset/www/index.html"
         private const val PREF_UI = "shift_alarm_ui"
+        /** 앱 버전 — 업데이트 설치 뒤에는 예전 버전이 남긴 알람을 모두 지우고 다시 건다(v2.2). */
+        const val APP_VERSION = 9
+        const val VERSION_NAME = "2.2"
     }
 
     private lateinit var web: WebView
@@ -49,7 +52,7 @@ class MainActivity : Activity() {
             allowContentAccess = true
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_DEFAULT
-            userAgentString = userAgentString + " PoscoShiftAlarm/2.1"
+            userAgentString = userAgentString + " PoscoShiftAlarm/2.2"
         }
         web.addJavascriptInterface(NativeAlarmBridge(this), "NativeAlarm")
         web.webChromeClient = WebChromeClient()
@@ -80,6 +83,17 @@ class MainActivity : Activity() {
         // 앱을 열지 않아도 6시간마다 교대달력을 확인하는 백그라운드 동기화 (v2.0)
         try {
             ShiftSync.schedulePeriodic(this)
+        } catch (e: Exception) {
+        }
+        // v2.2: 새 버전으로 올라오면 예전 버전이 걸어 둔 잘못된 알람(예: 날짜 예외를 무시한 05:21)까지
+        // 기록을 비우고 모두 취소한 뒤, 지금 저장된 목록으로 다시 건다. 웹이 열리면 곧 최신 목록으로 맞춰진다.
+        try {
+            val ui = getSharedPreferences(PREF_UI, Context.MODE_PRIVATE)
+            if (ui.getInt("seen_version", 0) != APP_VERSION) {
+                ui.edit().putInt("seen_version", APP_VERSION).apply()
+                AlarmScheduler.purgeAll(this)
+                AlarmScheduler.scheduleAll(this)
+            }
         } catch (e: Exception) {
         }
         maybeAskNotificationPermission()
@@ -209,16 +223,17 @@ class MainActivity : Activity() {
         Perms.openBatterySettings(this)
     }
 
-    /** 알람음 선택: 알람음(TYPE_ALARM) · 알림음(TYPE_NOTIFICATION) · 기본값. */
+    /** 알람음 선택: 알람음(TYPE_ALARM) · 벨소리(TYPE_RINGTONE) · 알림음(TYPE_NOTIFICATION) · 기본값. */
     fun pickRingtone() {
-        val items = arrayOf("알람음에서 고르기", "알림음에서 고르기", "기본 알람음으로")
+        val items = arrayOf("알람음에서 고르기", "벨소리에서 고르기", "알림음에서 고르기", "기본 알람음으로")
         try {
             AlertDialog.Builder(this)
                 .setTitle("알람음 선택")
                 .setItems(items) { _, which ->
                     when (which) {
                         0 -> openRingtonePicker(RingtoneManager.TYPE_ALARM)
-                        1 -> openRingtonePicker(RingtoneManager.TYPE_NOTIFICATION)
+                        1 -> openRingtonePicker(RingtoneManager.TYPE_RINGTONE)
+                        2 -> openRingtonePicker(RingtoneManager.TYPE_NOTIFICATION)
                         else -> {
                             RingPrefs.setRingtone(this, null)
                             notifyWeb()
@@ -286,6 +301,10 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         try {
+            RingTester.stop()
+        } catch (e: Exception) {
+        }
+        try {
             web.destroy()
         } catch (e: Exception) {
         }
@@ -299,7 +318,7 @@ class MainActivity : Activity() {
         val o = JSONObject()
         try {
             o.put("native", true)
-            o.put("version", "2.1")
+            o.put("version", VERSION_NAME)
             o.put("scheduled", upcoming.size)
             o.put("next", upcoming.firstOrNull()?.ts ?: 0L)
             o.put("nextTime", upcoming.firstOrNull()?.time ?: "")
@@ -317,7 +336,12 @@ class MainActivity : Activity() {
             o.put("snooze", AlarmStore.loadSnooze(this)?.ts ?: 0L)
             o.put("ringtone", RingPrefs.title(this))
             o.put("ringtoneUri", RingPrefs.uri(this) ?: "")
+            o.put("volume", RingPrefs.volume(this))
+            o.put("boost", RingPrefs.boostDb(this))
+            o.put("startMode", RingPrefs.startMode(this))
+            o.put("systemVolumeMax", RingPrefs.systemVolumeMax(this))
             o.put("fadeIn", RingPrefs.fadeIn(this))
+            o.put("pendingAlarms", AlarmScheduler.trackedCount(this))
             o.put("bgSync", true)
             o.put("bgSyncAt", ShiftSync.lastSync(this))
             o.put("bgSyncOk", ShiftSync.lastOk(this))

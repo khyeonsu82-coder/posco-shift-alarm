@@ -39,7 +39,6 @@ object ShiftSync {
     /** 6시간마다 (하루 4회). */
     const val INTERVAL_MS = 6L * 60L * 60L * 1000L
     private const val DAYS_AHEAD = 14
-    private const val MAX_TYPE_ALARMS = 6
 
     private fun prefs(ctx: Context) =
         ctx.applicationContext.getSharedPreferences(PREF, Context.MODE_PRIVATE)
@@ -186,7 +185,7 @@ object ShiftSync {
         return placed
     }
 
-    /** 웹의 alarmsFor() 와 같은 결과 — 날짜 × 켜진 알람 수만큼, id 는 "날짜|slot_N". */
+    /** 웹의 daySlotRows()·alarmsFor() 와 같은 결과 — 날짜 × 켜진 알람 수만큼, id 는 "날짜|slot_N". */
     fun buildAlarms(ctx: Context): List<ShiftAlarm> {
         val cfg = config(ctx) ?: return emptyList()
         if (cfg.has("master") && !cfg.optBoolean("master", true)) return emptyList()
@@ -203,51 +202,71 @@ object ShiftSync {
             // v2.1: 특근(overtime)은 알람을 잡지 않는다 — 달력·배지 표시에만 남긴다.
             if (!ShiftMath.hasAlarms(type)) continue
             val t = types.optJSONObject(type) ?: continue
-            // 날짜 예외(웹의 overrides) — 그 날짜만 켜거나 첫 알람 시각을 바꾼 것
-            val ov = overrides?.optJSONObject(date)
-            if (!t.optBoolean("on", true) && ov?.optBoolean("on", false) != true) continue
-            val arr = t.optJSONArray("alarms") ?: continue
-            val slots = ArrayList<Triple<String, String, Boolean>>()
-            for (j in 0 until arr.length()) {
-                val a = arr.optJSONObject(j) ?: continue
-                val time = a.optString("time", "")
-                if (time.isBlank()) continue
-                slots.add(
-                    Triple(
-                        time,
-                        ShiftAlarm.modeOf(a.optString("mode", "")),
-                        a.optBoolean("enabled", true)
+            val typeOn = t.optBoolean("on", true)
+            // 날짜 예외(웹의 overrides) — v2.2 부터는 그 날 목록 **전체**를 대신한다
+            val ov = overrides?.optJSONObject(date)?.let { parseOverride(it) }
+            if (ov == null && !typeOn) continue
+
+            val base = ArrayList<AlarmPlanner.Slot>()
+            val arr = t.optJSONArray("alarms")
+            if (arr != null) {
+                for (j in 0 until arr.length()) {
+                    val a = arr.optJSONObject(j) ?: continue
+                    val time = a.optString("time", "")
+                    if (time.isBlank()) continue
+                    base.add(
+                        AlarmPlanner.Slot(
+                            time = time,
+                            mode = ShiftAlarm.modeOf(a.optString("mode", "")),
+                            enabled = a.optBoolean("enabled", true)
+                        )
                     )
-                )
+                }
             }
-            slots.sortBy { it.first }
             val note = ShiftMath.noteFor(date, custom)
             val label = ShiftMath.label(type, note)
-            if (slots.size > MAX_TYPE_ALARMS) slots.subList(MAX_TYPE_ALARMS, slots.size).clear()
+            val slots = AlarmPlanner.daySlots(typeOn, base, ov)
             slots.forEachIndexed { idx, s ->
-                var enabled = s.third
-                var time = s.first
-                if (idx == 0 && ov != null) {
-                    enabled = ov.optBoolean("on", true)
-                    val ovTime = ov.optString("time", "")
-                    if (ovTime.isNotBlank()) time = ovTime
-                }
-                if (!enabled) return@forEachIndexed
-                val ts = ShiftMath.tsOf(date, time)
+                if (!s.enabled) return@forEachIndexed
+                val ts = ShiftMath.tsOf(date, s.time)
                 if (ts <= now + 1000L) return@forEachIndexed
                 out.add(
                     ShiftAlarm(
                         id = date + "|slot_" + (idx + 1),
                         date = date,
-                        time = time,
+                        time = s.time,
                         label = label,
                         ts = ts,
-                        mode = s.second
+                        mode = s.mode
                     )
                 )
             }
         }
         return out
+    }
+
+    /** 웹이 넘긴 날짜 예외 JSON → AlarmPlanner.DayOverride(새 형식 alarms · 예전 형식 on/time 모두). */
+    private fun parseOverride(o: JSONObject): AlarmPlanner.DayOverride {
+        val arr = o.optJSONArray("alarms")
+        val slots = if (arr == null) null else {
+            val list = ArrayList<AlarmPlanner.Slot>()
+            for (j in 0 until arr.length()) {
+                val a = arr.optJSONObject(j) ?: continue
+                list.add(
+                    AlarmPlanner.Slot(
+                        time = a.optString("time", ""),
+                        mode = ShiftAlarm.modeOf(a.optString("mode", "")),
+                        enabled = a.optBoolean("enabled", true)
+                    )
+                )
+            }
+            list
+        }
+        return AlarmPlanner.DayOverride(
+            on = o.optBoolean("on", true),
+            time = o.optString("time", ""),
+            slots = slots
+        )
     }
 
     private fun safeLog(msg: String) {

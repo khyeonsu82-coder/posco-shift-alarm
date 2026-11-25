@@ -218,6 +218,10 @@
   .drow:first-of-type{border-top:0}
   .drow span{font-size:12px; font-weight:800}
   .drow span.tiny{font-size:10.5px; font-weight:700; color:#6E7B8F}
+  /* 날짜 시트 — 그 날 알람 목록 전체 */
+  .dslot{display:flex; align-items:center; gap:6px; padding:6px 0; border-top:1px solid #1D2735}
+  .dslot:first-child{border-top:0}
+  #dSlots{transition:opacity .15s}
 
   /* ---------- ring ---------- */
   #ringOverlay{align-items:center; background:radial-gradient(120% 100% at 50% 0%, #2A1408 0%, #0B0F17 62%)}
@@ -361,7 +365,7 @@
       </div>
     </section>
 
-    <div class="footer">교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.1</div>
+    <div class="footer">교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.2</div>
   </main>
 </div>
 
@@ -381,32 +385,51 @@
 
     <div class="group">
       <div class="group-title">소리 · 진동</div>
-      <div class="seg" id="soundSeg">
-        <button data-sound="bell">🔔 부드러운 벨</button>
-        <button data-sound="classic">⏰ 클래식 알람</button>
-      </div>
       <div class="row" style="padding:4px 0">
         <span style="font-size:12.5px;font-weight:800;width:44px">음량</span>
-        <input type="range" id="volRange" min="0" max="100" step="5">
-        <span id="volTxt" class="tiny" style="width:34px;text-align:right">70%</span>
+        <input type="range" id="volRange" min="10" max="100" step="5">
+        <span id="volTxt" class="tiny" style="width:40px;text-align:right">100%</span>
       </div>
-      <div class="drow">
-        <span>진동</span>
-        <label class="switch"><input type="checkbox" id="vibToggle"><span></span></label>
+      <div id="toneGroup">
+        <div class="seg" id="soundSeg" style="margin-top:6px">
+          <button data-sound="bell">🔔 부드러운 벨</button>
+          <button data-sound="classic">⏰ 클래식 알람</button>
+        </div>
       </div>
       <div id="ringGroup" style="display:none">
         <div class="drow">
           <span>알람음<em class="tiny" id="ringName" style="display:block;font-style:normal;margin-top:1px">기본 알람음</em></span>
           <button id="btnRingtone" class="mini-btn">선택</button>
         </div>
-        <div class="drow">
-          <span>점점 크게 울리기<em class="tiny" style="display:block;font-style:normal;margin-top:1px">8초 동안 15% → 100%</em></span>
-          <label class="switch"><input type="checkbox" id="fadeToggle"><span></span></label>
+        <div class="drow" style="display:block">
+          <span>시작 방식</span>
+          <div class="seg" id="startSeg" style="margin:7px 0 0">
+            <button data-start="full">바로 최대</button>
+            <button data-start="quick">3초 페이드</button>
+            <button data-start="slow">8초 페이드</button>
+          </div>
         </div>
+        <div class="drow" style="display:block">
+          <span>크게 키우기<em class="tiny" style="display:block;font-style:normal;margin-top:1px">울리는 소리를 더 키우는 부스트</em></span>
+          <div class="seg" id="boostSeg" style="margin:7px 0 0">
+            <button data-boost="0">기본</button>
+            <button data-boost="6">+6dB</button>
+            <button data-boost="12">+12dB</button>
+          </div>
+        </div>
+        <div class="drow">
+          <span>폰 알람 볼륨도 최대로<em class="tiny" style="display:block;font-style:normal;margin-top:1px">울릴 때만 올리고, 끄면 원래대로 돌려놔요</em></span>
+          <label class="switch"><input type="checkbox" id="sysVolToggle" checked><span></span></label>
+        </div>
+        <button id="btnSoundTest" class="ghost-btn" style="margin-top:8px">🔔 지금 설정으로 소리 테스트 (6초)</button>
         <div class="drow">
           <span>백그라운드 자동 동기화</span>
           <span class="tiny" id="bgState">6시간마다</span>
         </div>
+      </div>
+      <div class="drow">
+        <span>진동</span>
+        <label class="switch"><input type="checkbox" id="vibToggle"><span></span></label>
       </div>
       <div class="drow">
         <span>스누즈</span>
@@ -466,7 +489,7 @@
       <p class="hint">울리면 <b>잠금을 풀지 않고</b> 잠금화면 위 알람 화면의 <b>알람 해제</b> 버튼을 누르면 바로 꺼져요. 그러려면 위 네 항목이 모두 켜져 있어야 해요. 꺼져 있으면 잠금화면에 <b>알림 카드만</b> 뜨고, 그때는 카드의 <b>끄기</b> 버튼을 누르거나 카드를 옆으로 밀어도 알람이 꺼져요(잠금 해제 필요 없음). 테스트는 꼭 <b>화면을 잠근 상태</b>에서 해 보세요.</p>
     </div>
 
-    <div class="foot-note">교대 알람 v2.1 · 교대달력 읽기 전용 연동</div>
+    <div class="foot-note">교대 알람 v2.2 · 교대달력 읽기 전용 연동</div>
   </div>
 </div>
 
@@ -484,13 +507,12 @@
     </div>
     <div class="group" style="margin-top:12px">
       <div class="drow">
-        <span>이 날 알람</span>
+        <span>이 날 알람<em class="tiny" style="display:block;font-style:normal;margin-top:1px">끄면 아래 알람도 모두 쉬어요</em></span>
         <label class="switch"><input type="checkbox" id="dOn"><span></span></label>
       </div>
-      <div class="drow">
-        <span>알람 시간</span>
-        <input type="time" id="dTime" step="60">
-      </div>
+      <div id="dSlots" class="slots"></div>
+      <div class="tiny" id="dSum" style="margin-top:7px"></div>
+      <button id="dAdd" class="slot-add">＋ 이 날만 알람 하나 더</button>
     </div>
     <p class="hint" id="dHint"></p>
     <button id="dSave" class="primary">이 날만 이렇게</button>
@@ -604,11 +626,17 @@ const DEFAULT_SETTINGS = {
     off:      { on:false, time:'08:00', alarms:[{ id:'a1', time:'08:00', mode:'sound', enabled:true }] }
   },
   sound: 'bell',
-  volume: 70,
+  volume: 100,
+  /** v2.2: 알람 소리를 더 키우는 부스트(LoudnessEnhancer) — 0 / 6 / 12 dB. */
+  boost: 6,
+  /** v2.2: 시작 방식 — 'full'(바로 최대) / 'quick'(3초) / 'slow'(8초 점점 크게). */
+  startMode: 'quick',
+  /** v2.2: 울리는 동안 폰 알람 볼륨을 최대로 올리고 끄면 원래대로. */
+  sysVolMax: true,
   vibrate: true,
   fadeIn: false,
   topic: DEFAULT_TOPIC,
-  v: 2
+  v: 3
 };
 
 function readJSON(key, fallback){
@@ -633,7 +661,11 @@ let settings = (() => {
     cfg.alarms = normAlarmList(raw.alarms, raw.time || def.time);
     s.types[k] = mirrorTypeTime(cfg);
   }
-  s.volume = Math.max(0, Math.min(100, Number(s.volume) || 0));
+  s.volume = Math.max(10, Math.min(100, Number(s.volume) || 0) || 100);
+  s.boost = [0, 6, 12].indexOf(Number(s.boost)) >= 0 ? Number(s.boost) : 6;
+  // 예전 '점점 크게(fadeIn)' 설정을 시작 방식으로 옮긴다
+  if (['full', 'quick', 'slow'].indexOf(s.startMode) < 0) s.startMode = s.fadeIn ? 'slow' : 'quick';
+  s.sysVolMax = s.sysVolMax !== false;
   return s;
 })();
 
@@ -744,24 +776,60 @@ function typeAlarms(type){
 }
 function alarmModeText(mode){ return mode === 'vibrate' ? '진동만' : '소리+진동'; }
 
-/** 그 날짜에 실제로 울릴 알람 전부(시각 순). 날짜 예외는 첫 알람에만 적용된다. */
+/**
+ * 그 날짜의 알람 목록을 만든다.
+ *
+ * v2.2 에서 바뀐 것: 날짜 예외(`overrides[날짜]`)는 그 날의 알람 목록 **전체**를 대신한다.
+ * 예전(v2.1)에는 예외가 첫 번째 알람에만 적용돼, 주간에 알람이 2개(05:20·05:21) 있으면
+ * 예외로 06:35 를 정한 날에도 05:21 이 그대로 살아 05:21 에 울렸다.
+ * 예전에 저장된 `{on, time}` 형식은 그 날 목록을 한 건으로 통째로 바꿔 읽는다(잔여 알람 없음).
+ */
+function baseSlotRows(type){
+  return typeAlarms(type).map(a => ({ time: a.time, mode: a.mode || 'sound', enabled: a.enabled !== false }));
+}
+
+function overrideSlotRows(ov, cfg, base){
+  const first = base[0] || { time: (cfg && cfg.time) || '07:00', mode: 'sound', enabled: true };
+  if (ov && Array.isArray(ov.alarms)){
+    const rows = ov.alarms.filter(a => a && typeof a === 'object').map(a => ({
+      time: normTime(a.time, first.time),
+      mode: a.mode === 'vibrate' ? 'vibrate' : 'sound',
+      enabled: a.enabled !== false
+    }));
+    if (rows.length) return rows.sort((a, b) => a.time.localeCompare(b.time));
+  }
+  // 예전 형식 — 그 날 목록을 통째로 한 건으로 대체한다
+  return [{ time: normTime((ov && ov.time) || first.time, first.time),
+            mode: first.mode || 'sound', enabled: true }];
+}
+
+function daySlotRows(dateStr){
+  const s = shiftFor(dateStr);
+  const cfg = typeCfg(s.type);
+  const base = baseSlotRows(s.type);
+  const ov = overrides[dateStr];
+  if (ov){
+    const on = ov.on !== false;
+    return overrideSlotRows(ov, cfg, base).map(r => ({ time: r.time, mode: r.mode, enabled: r.enabled && on }));
+  }
+  return cfg.on ? base.map(r => ({ time: r.time, mode: r.mode, enabled: r.enabled })) : [];
+}
+
+/** 그 날짜에 실제로 울릴 알람 전부(시각 순). */
 function alarmsFor(dateStr){
   const s = shiftFor(dateStr);
   if (!alarmsAllowed(s.type)) return [];   // 특근 — 알람을 잡지 않는다
   const cfg = typeCfg(s.type);
-  const ov = overrides[dateStr];
-  if (!cfg.on && !(ov && ov.on)) return [];
   const d = parseD(dateStr);
   const out = [];
-  typeAlarms(s.type).forEach((al, i) => {
-    let on = !!al.enabled, time = al.time;
-    if (i === 0 && ov){ on = !!ov.on; if (ov.time) time = ov.time; }
-    if (!on) return;
-    const [hh,mm] = normTime(time, al.time).split(':').map(Number);
+  daySlotRows(dateStr).forEach((r, i) => {
+    if (r.enabled === false) return;
+    const time = normTime(r.time, cfg.time);
+    const [hh,mm] = time.split(':').map(Number);
     const ts = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hh, mm, 0, 0).getTime();
-    out.push({ date: dateStr, time: normTime(time, al.time), on: true, ts, type: s.type, note: s.note,
-               label: shiftLabel(s), override: i === 0 && !!ov, followed: s.modified,
-               mode: al.mode || 'sound', slot: i + 1, alarmId: al.id });
+    out.push({ date: dateStr, time, on: true, ts, type: s.type, note: s.note,
+               label: shiftLabel(s), override: !!overrides[dateStr], followed: s.modified,
+               mode: r.mode || 'sound', slot: i + 1, alarmId: r.id || ('o' + (i + 1)) });
   });
   return out;
 }
@@ -771,10 +839,11 @@ function alarmFor(dateStr){
   const list = alarmsFor(dateStr);
   if (list.length) return Object.assign({ count: list.length }, list[0]);
   const s = shiftFor(dateStr);
-  const first = typeAlarms(s.type)[0];
-  const fallbackTime = alarmsAllowed(s.type) ? '07:00' : '';
+  const rows = daySlotRows(dateStr);
+  const first = rows[0] || typeAlarms(s.type)[0];
+  const fallbackTime = alarmsAllowed(s.type) ? ((first && first.time) || '07:00') : '';
   return { date: dateStr, time: first ? first.time : fallbackTime, on: false, ts: 0, type: s.type,
-           note: s.note, label: shiftLabel(s), override: false, followed: s.modified,
+           note: s.note, label: shiftLabel(s), override: !!overrides[dateStr], followed: s.modified,
            mode: first ? first.mode : 'sound', slot: 1, count: 0 };
 }
 
@@ -932,11 +1001,9 @@ function renderNativeStatus(){
   const btn = $('btnNativePerm');
   if (btn) btn.textContent = bad ? '권한 한 번에 확인하기' : '권한 다시 확인';
 
-  /* 알람음 · 점점 크게 · 백그라운드 동기화 */
+  /* 알람음 · 백그라운드 동기화 */
   const ringName = $('ringName');
   if (ringName) ringName.textContent = st.ringtone ? st.ringtone : '기본 알람음';
-  const fadeBox = $('fadeToggle');
-  if (fadeBox && typeof st.fadeIn === 'boolean') fadeBox.checked = st.fadeIn;
   const bg = $('bgState');
   if (bg){
     const at = st.bgSyncAt ? new Date(st.bgSyncAt) : null;
@@ -1476,6 +1543,13 @@ $('masterToggle').addEventListener('change', e => {
 });
 
 $('btnTest').addEventListener('click', () => {
+  if (nativeAlarm){
+    /* 네이티브에서는 폰 알람 스트림·부스트·고른 알람음으로 실제 재생해 본다(v2.2) */
+    try{ nativeAlarm.testSound(); }catch(e){}
+    toast(`선택한 알람음으로 6초 재생 · 음량 ${settings.volume}%`
+      + (settings.boost ? ` · +${settings.boost}dB` : '') + (settings.sysVolMax !== false ? ' · 알람 볼륨 최대' : ''));
+    return;
+  }
   strike();
   toast(settings.sound === 'classic' ? '⏰ 클래식 알람 미리듣기' : '🔔 부드러운 벨 미리듣기');
 });
@@ -1550,6 +1624,12 @@ function syncSettingsUI(){
   $('volRange').value = settings.volume;
   $('volTxt').textContent = settings.volume + '%';
   $('vibToggle').checked = !!settings.vibrate;
+  const startSeg = $('startSeg');
+  if (startSeg) startSeg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.start === settings.startMode));
+  const boostSeg = $('boostSeg');
+  if (boostSeg) boostSeg.querySelectorAll('button').forEach(b => b.classList.toggle('on', Number(b.dataset.boost) === Number(settings.boost)));
+  const sysVol = $('sysVolToggle');
+  if (sysVol) sysVol.checked = settings.sysVolMax !== false;
   $('topicInput').value = settings.topic || '';
   setSyncDetail();
   setWakeState(wakeSupported ? (wakeLock ? '유지 중' : '대기') : '미지원');
@@ -1569,6 +1649,9 @@ if (isNative()){
   if (clockLabel) clockLabel.textContent = '알람 상태';
   const wakeHint = $('wakeHint');
   if (wakeHint) wakeHint.textContent = '알람이 울릴 때 화면을 켜 두도록 요청해요.';
+  /* 네이티브는 폰의 알람음을 고르므로 웹 내장 톤 선택은 감춘다 */
+  const toneGroup = $('toneGroup');
+  if (toneGroup) toneGroup.style.display = 'none';
   $('btnNativePerm').addEventListener('click', requestNativePermissions);
   const fsBtnEl = $('btnNativeFs');
   if (fsBtnEl) fsBtnEl.addEventListener('click', () => {
@@ -1589,29 +1672,64 @@ if (isNative()){
     try{ nativeAlarm.testAlarmIn(10); }catch(e){}
     toast('10초 뒤 짧게 진동해요 · 지금 화면을 잠가 두세요');
   });
-  /* 알람음 선택(폰의 알람음·알림음) · 점점 크게 */
+  /* 알람음 선택(폰의 알람음·벨소리·알림음) · 시작 방식 · 부스트 */
   const ringGroup = $('ringGroup');
   if (ringGroup) ringGroup.style.display = 'block';
   const ringBtn = $('btnRingtone');
   if (ringBtn) ringBtn.addEventListener('click', () => {
     try{ nativeAlarm.pickRingtone(); }catch(e){ toast('알람음 선택을 열 수 없어요'); }
   });
-  const fade = $('fadeToggle');
-  if (fade) fade.addEventListener('change', () => {
-    settings.fadeIn = fade.checked;
-    writeJSON(LS.settings, settings);
-    try{ nativeAlarm.setFadeIn(!!settings.fadeIn); }catch(e){}
-    toast(fade.checked ? '처음엔 작게, 8초 동안 점점 크게 울려요' : '한 번에 정한 음량으로 울려요');
+  const startSeg = $('startSeg');
+  if (startSeg) startSeg.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      settings.startMode = b.dataset.start;
+      writeJSON(LS.settings, settings);
+      try{ nativeAlarm.setStartMode(settings.startMode); }catch(e){}
+      syncSettingsUI();
+      toast(b.dataset.start === 'full' ? '처음부터 최대로 울려요'
+        : b.dataset.start === 'quick' ? '3초에 걸쳐 크게 울려요' : '8초 동안 점점 크게 울려요');
+    });
   });
+  const boostSeg = $('boostSeg');
+  if (boostSeg) boostSeg.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      settings.boost = Number(b.dataset.boost);
+      writeJSON(LS.settings, settings);
+      try{ nativeAlarm.setBoost(settings.boost); }catch(e){}
+      syncSettingsUI();
+      toast(settings.boost ? `알람을 ${settings.boost}dB 더 크게 울려요` : '부스트 없이 원래 음량으로 울려요');
+    });
+  });
+  const sysVol = $('sysVolToggle');
+  if (sysVol) sysVol.addEventListener('change', () => {
+    settings.sysVolMax = sysVol.checked;
+    writeJSON(LS.settings, settings);
+    try{ nativeAlarm.setSystemVolumeMax(settings.sysVolMax); }catch(e){}
+    toast(settings.sysVolMax ? '울릴 때 폰 알람 볼륨을 최대로 올렸다가 되돌려요' : '폰 알람 볼륨은 그대로 두고 이 앱 음량만 써요');
+  });
+  const soundTestBtn = $('btnSoundTest');
+  if (soundTestBtn) soundTestBtn.addEventListener('click', () => {
+    try{ nativeAlarm.testSound(); }catch(e){}
+    toast(`지금 설정으로 6초 재생 · 폰 소리도 확인해 보세요 (음량 ${settings.volume}%`
+      + (settings.boost ? ` · +${settings.boost}dB` : '') + ')');
+  });
+  /* 저장된 음량·부스트·시작 방식을 네이티브에 맞춰 둔다 */
+  try{
+    nativeAlarm.setVolume && nativeAlarm.setVolume(settings.volume);
+    nativeAlarm.setBoost && nativeAlarm.setBoost(settings.boost);
+    nativeAlarm.setStartMode && nativeAlarm.setStartMode(settings.startMode);
+    nativeAlarm.setSystemVolumeMax && nativeAlarm.setSystemVolumeMax(settings.sysVolMax !== false);
+  }catch(e){}
   const clockTitle = $('clockOverlay').querySelector('h2');
   if (clockTitle) clockTitle.textContent = '⏰ 네이티브 알람 상태';
   const foot = document.querySelector('.footer');
-  if (foot) foot.textContent = '교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.1 · 네이티브 알람';
+  if (foot) foot.textContent = '교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.2 · 네이티브 알람';
   $('btnHelp').textContent = 'ℹ️ 이 앱은 닫아도 알람이 울려요 — 확인 사항';
   $('helpBody').innerHTML = '<b>이 앱은 폰의 알람으로 직접 예약</b>하기 때문에 앱을 닫거나 화면이 잠겨 있어도 정확한 시각에 울려요.'
     + '<ol>'
-    + '<li>목록의 예정 알람 14일치가 폰 알람으로 자동 등록돼요. 주간·야간마다 알람을 여러 개 둘 수 있고(예: 05:20 진동 + 05:21 소리), 알람마다 <b>진동만 / 소리+진동</b>을 고를 수 있어요.</li>'
-    + '<li>앱을 열지 않아도 <b>6시간마다 백그라운드에서 교대달력을 확인</b>해 바뀐 근무·휴가를 알람에 다시 반영해요. 설정에서 알람음(폰의 알람음·알림음)과 <b>점점 크게 울리기</b>도 고를 수 있어요.</li>'
+    + '<li>목록의 예정 알람 14일치가 폰 알람으로 자동 등록돼요. 주간·야간마다 알람을 여러 개 둘 수 있고, 알람마다 <b>진동만 / 소리+진동</b>을 고를 수 있어요.</li>'
+    + '<li>날짜를 탭하면 <b>그 날 알람 목록 전체</b>가 나와요. 하나씩 켜고/끄고/바꾼 뒤 저장하면 그 날은 <b>그 목록만</b> 울리고 기본 알람은 함께 울리지 않아요. 예외를 해제하면 기본값을 따라가요.</li>'
+    + '<li>앱을 열지 않아도 <b>6시간마다 백그라운드에서 교대달력을 확인</b>해 바뀐 근무·휴가를 알람에 다시 반영해요. 설정에서 알람음(폰의 알람음·벨소리·알림음) · <b>음량</b> · <b>부스트(+6/+12dB)</b> · <b>시작 방식</b>도 고를 수 있고, <b>소리 테스트</b>로 바로 체감할 수 있어요.</li>'
     + '<li><span class="kb">⚙️ 설정 → 안드로이드 네이티브 알람</span>에서 알림 · 정확한 알람 · <b>잠금화면 전체화면 알림</b> · 배터리 예외를 모두 켜 주세요. 잠금화면 전체화면 알림이 꺼져 있으면 잠금화면에 알람 화면이 뜨지 않고 알림만 떠요.</li>'
     + '<li>울리면 잠금을 풀지 않아도 잠금화면 위에 알람 화면이 떠요. <b>알람 해제</b> 버튼을 누르면 바로 꺼져요(5분 뒤 다시는 별도 버튼). 만약 알람 화면 없이 <b>알림으로만</b> 떴다면 알림의 <b>끄기</b> 버튼을 누르거나 알림을 옆으로 밀면 그대로 꺼져요(잠금 해제 필요 없음).</li>'
     + '<li>폰 제조사(삼성 등)의 <b>절전·백그라운드 제한</b>에서 이 앱을 예외로 두면 더 확실해요.</li>'
@@ -1702,8 +1820,11 @@ $('volRange').addEventListener('input', e => {
   settings.volume = Number(e.target.value);
   $('volTxt').textContent = settings.volume + '%';
   writeJSON(LS.settings, settings);
+  if (nativeAlarm){
+    try{ nativeAlarm.setVolume && nativeAlarm.setVolume(settings.volume); }catch(err){}
+  }
 });
-$('volRange').addEventListener('change', () => { strike(); });
+$('volRange').addEventListener('change', () => { if (!nativeAlarm) strike(); });
 $('vibToggle').addEventListener('change', e => {
   settings.vibrate = e.target.checked;
   writeJSON(LS.settings, settings);
@@ -1729,51 +1850,156 @@ $('btnNotify').addEventListener('click', async () => {
   toast(p === 'granted' ? '알림을 허용했어요' : '알림이 차단되어 있어요');
 });
 
-/* 날짜 시트 */
+/* 날짜 시트 — 그 날의 알람 목록 **전체**를 보여 주고 하나씩 켜고/끄고/바꾼다 (v2.2).
+   저장하면 그 날은 아래 목록만 울린다 — 기본 알람이 같이 울리지 않는다. */
 let sheetDate = null;
+let sheetBlocked = false;
+
+function renderDateSlots(rows){
+  $('dSlots').innerHTML = rows.map((r, i) => `<div class="dslot" data-i="${i}">
+      <input type="time" class="slot-time d-slot-time" value="${r.time}" step="60" aria-label="이 날 알람 시간">
+      <button class="mode-btn${r.mode === 'vibrate' ? ' vib' : ''}" data-mode="${r.mode}" title="울림 방식 (누르면 바뀜)">${alarmModeText(r.mode)}</button>
+      <label class="switch sm"><input type="checkbox" class="d-slot-on"${r.enabled ? ' checked' : ''} aria-label="${r.time} 알람 켜기"><span></span></label>
+      ${rows.length > 1 ? '<button class="slot-del" title="이 알람 삭제" aria-label="알람 삭제">✕</button>' : ''}
+    </div>`).join('');
+  const on = $('dOn').checked;
+  $('dSlots').style.opacity = on ? '1' : '.55';
+  updateDateSum();
+}
+
+/** 이 날 실제로 울릴 알람을 한 줄로 — 몇 개가 같이 울리는지 헷갈리지 않게 (v2.2) */
+function updateDateSum(){
+  const el = $('dSum');
+  if (!el) return;
+  const on = $('dOn').checked;
+  const times = readDateSlots().filter(r => r.enabled).map(r => r.time);
+  if (!on || !times.length){
+    el.textContent = '이 날은 알람이 울리지 않아요';
+    el.style.color = '#6E7B8F';
+    return;
+  }
+  el.textContent = times.length > 1
+    ? `울릴 알람 ${times.length}개 — ${times.join(' · ')}`
+    : `울릴 알람 1개 — ${times[0]}`;
+  el.style.color = times.length > 1 ? '#FFC44D' : '#6FBF73';
+}
+
+function readDateSlots(){
+  const rows = [...document.querySelectorAll('#dSlots .dslot')].map(el => {
+    const t = el.querySelector('.d-slot-time');
+    const m = el.querySelector('.mode-btn');
+    const s = el.querySelector('.d-slot-on');
+    return {
+      time: normTime(t ? t.value : '', '07:00'),
+      mode: m && m.dataset.mode === 'vibrate' ? 'vibrate' : 'sound',
+      enabled: !!(s && s.checked)
+    };
+  });
+  return rows.sort((a, b) => a.time.localeCompare(b.time));
+}
+
 function openDateSheet(dateStr){
   sheetDate = dateStr;
   const s = shiftFor(dateStr);
-  const a = alarmFor(dateStr);
+  const cfg = typeCfg(s.type);
   const d = parseD(dateStr);
-  const blocked = !alarmsAllowed(s.type);
+  sheetBlocked = !alarmsAllowed(s.type);
+  const list = alarmsFor(dateStr);
   $('dTitle').textContent = `${mdText(dateStr)} (${WD[d.getDay()]}) ${relativeDay(dateStr)}`.trim();
   $('dBadge').className = 'pill small ' + s.type;
   $('dBadge').textContent = shiftLabel(s) + (s.modified ? ' · 교대달력 반영' : ' · 기본 패턴');
   $('dShiftTime').textContent = shiftSpan(s);
-  $('dOn').checked = a.on;
-  $('dOn').disabled = blocked;
-  $('dTime').value = a.time;
-  $('dTime').disabled = blocked;
-  $('dTime').style.opacity = (a.on && !blocked) ? '1' : '.6';
-  $('dSave').disabled = blocked;
-  $('dSave').style.opacity = blocked ? '.5' : '1';
-  const cfg = typeCfg(s.type);
-  $('dHint').textContent = blocked
+  $('dOn').checked = list.length > 0;
+  $('dOn').disabled = sheetBlocked;
+  $('dAdd').disabled = sheetBlocked;
+  $('dSave').disabled = sheetBlocked;
+  $('dSave').style.opacity = sheetBlocked ? '.5' : '1';
+  // 그 날 울릴 알람이 없으면(휴무 기본 꺼짐) 근무의 기본 목록을 보여 줘 고를 수 있게 한다
+  let rows = daySlotRows(dateStr);
+  if (!rows.length) rows = baseSlotRows(s.type);
+  if (!rows.length) rows = [{ time: cfg.time || '07:00', mode: 'sound', enabled: true }];
+  renderDateSlots(rows);
+
+  const baseRows = baseSlotRows(s.type);
+  const baseText = baseRows.length
+    ? baseRows.map(r => r.time + (r.enabled ? '' : ' (꺼짐)')).join(' · ')
+      + ' · ' + (cfg.on ? '켜짐' : '꺼짐')
+    : '없음';
+  $('dHint').textContent = sheetBlocked
     ? '특근은 알람을 잡지 않아요. 근무 표시만 하고, 그날 일어나야 하면 폰 시계 앱 알람을 써 주세요.'
-    : a.override
-    ? `지금은 ${mdText(dateStr)}만의 예외 알람이에요. 해제하면 ${SHIFT_META[s.type].label} 기본값(${cfg.time}, ${cfg.on ? '켜짐' : '꺼짐'})을 따라가요.`
-    : (s.note ? `교대달력 메모: ${s.note}. ` : '') +
-      `기본값은 ${SHIFT_META[s.type].label} ${cfg.time} ${cfg.on ? '켜짐' : '꺼짐'} 예요.` +
-      (typeAlarms(s.type).length > 1 ? ` 여기서는 첫 알람만 바뀌어요 · 나머지는 설정의 근무별 알람에서.` : '');
+    : (overrides[dateStr]
+        ? `${mdText(dateStr)}만의 예외예요. 여기 목록만 울리고 기본 ${SHIFT_META[s.type].label} 알람은 함께 울리지 않아요. 예외를 해제하면 기본값(${baseText})으로 돌아가요.`
+        : (s.note ? `교대달력 메모: ${s.note}. ` : '')
+          + `기본 ${SHIFT_META[s.type].label} 알람은 ${baseText}. 여기서 저장하면 그 날은 아래 목록만 울려요.`);
   $('dateOverlay').classList.remove('hidden');
 }
 $('btnCloseDate').addEventListener('click', () => $('dateOverlay').classList.add('hidden'));
 $('dateOverlay').addEventListener('click', e => {
   if (e.target === $('dateOverlay')) $('dateOverlay').classList.add('hidden');
 });
-$('dOn').addEventListener('change', e => { $('dTime').style.opacity = e.target.checked ? '1' : '.6'; });
+$('dOn').addEventListener('change', e => {
+  $('dSlots').style.opacity = e.target.checked ? '1' : '.55';
+  updateDateSum();
+});
+
+/* 알람 하나씩 편집(위임) */
+$('dSlots').addEventListener('click', e => {
+  const modeBtn = e.target.closest('.mode-btn');
+  if (modeBtn){
+    const next = modeBtn.dataset.mode === 'vibrate' ? 'sound' : 'vibrate';
+    modeBtn.dataset.mode = next;
+    modeBtn.textContent = alarmModeText(next);
+    modeBtn.classList.toggle('vib', next === 'vibrate');
+    return;
+  }
+  const delBtn = e.target.closest('.slot-del');
+  if (delBtn){
+    const rows = readDateSlots();
+    if (rows.length <= 1){ toast('알람은 최소 하나는 남겨 주세요'); return; }
+    const i = Number(delBtn.closest('.dslot').dataset.i);
+    rows.splice(i, 1);
+    renderDateSlots(rows);
+  }
+});
+$('dSlots').addEventListener('change', e => {
+  const t = e.target.closest('.d-slot-time');
+  if (t){
+    if (!t.value) t.value = '07:00';
+    updateDateSum();
+    return;
+  }
+  if (e.target.closest('.d-slot-on')) updateDateSum();
+});
+$('dAdd').addEventListener('click', () => {
+  if (sheetBlocked){ toast('특근은 알람을 잡지 않아요'); return; }
+  const rows = readDateSlots();
+  if (rows.length >= 6){ toast('한 날 알람은 6개까지예요'); return; }
+  const last = rows[rows.length - 1];
+  rows.push({ time: last ? addMinutes(last.time, 1) : '07:00', mode: 'sound', enabled: true });
+  renderDateSlots(rows.sort((a, b) => a.time.localeCompare(b.time)));
+});
+
 $('dSave').addEventListener('click', () => {
   if (!sheetDate) return;
-  if (!alarmsAllowed(shiftFor(sheetDate).type)) { toast('특근은 알람을 잡지 않아요'); return; }
+  const s = shiftFor(sheetDate);
+  if (!alarmsAllowed(s.type)) { toast('특근은 알람을 잡지 않아요'); return; }
+  const cfg = typeCfg(s.type);
+  const base = baseSlotRows(s.type);
   const on = $('dOn').checked;
-  const time = $('dTime').value || typeCfg(shiftFor(sheetDate).type).time;
-  const cfg = typeCfg(shiftFor(sheetDate).type);
-  overrides[sheetDate] = (time === cfg.time) ? { on } : { on, time };
+  const rows = readDateSlots().map(r => ({ time: r.time, mode: r.mode, enabled: !!r.enabled && on }));
+  const sameAsBase = on === !!cfg.on && rows.length === base.length &&
+    rows.every((r, i) => r.time === base[i].time && r.mode === base[i].mode && r.enabled === base[i].enabled);
+  if (sameAsBase){
+    delete overrides[sheetDate];          // 기본값과 같으면 예외를 남기지 않는다(앞으로 기본값을 따라간다)
+  } else {
+    overrides[sheetDate] = { on, time: rows.length ? rows[0].time : cfg.time, alarms: rows };
+  }
   writeJSON(LS.overrides, overrides);
   $('dateOverlay').classList.add('hidden');
   refreshAll();
-  toast(on ? `${mdText(sheetDate)} ${time} 알람 저장` : `${mdText(sheetDate)} 알람 끔`);
+  nativeSync(true);
+  const times = rows.filter(r => r.enabled).map(r => r.time);
+  toast(times.length ? `${mdText(sheetDate)} ${times.join(' · ')} 알람 저장` : `${mdText(sheetDate)} 알람 끔`);
 });
 $('dClear').addEventListener('click', () => {
   if (!sheetDate) return;
@@ -1781,6 +2007,7 @@ $('dClear').addEventListener('click', () => {
   writeJSON(LS.overrides, overrides);
   $('dateOverlay').classList.add('hidden');
   refreshAll();
+  nativeSync(true);
   toast('이 날짜 예외를 지웠어요');
 });
 
@@ -1883,6 +2110,7 @@ setInterval(tick, 1000);
 /* 테스트/점검용 훅 */
 window.__alarm = {
   shiftFor, alarmFor, alarmsFor, typeAlarms, nextAlarm, baseShift, teamFor,
+  daySlotRows, baseSlotRows,
   get settings(){ return settings; },
   get cloud(){ return cloud; },
   get overrides(){ return overrides; },

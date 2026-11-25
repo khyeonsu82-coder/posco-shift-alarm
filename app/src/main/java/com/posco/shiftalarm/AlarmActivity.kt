@@ -188,6 +188,7 @@ class AlarmActivity : Activity() {
     }
 
     private fun unlockPhone() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         try {
             val km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
             if (!km.isKeyguardLocked) return
