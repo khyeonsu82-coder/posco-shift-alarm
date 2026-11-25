@@ -152,6 +152,26 @@ APK: `downloads/포스코교대알람-v2.0.apk` (versionCode 7). 실기기 확�
   `test_native.py` 85/85(특근 제외·블록 3개·assets 동일성 5항목 추가).
 - APK: `downloads/포스코교대알람-v2.1.apk` (versionCode 8). 실기기 확인은 현수 님 폰에서.
 
+## v2.3 (2026-11-26) — 앱 음량 슬라이더 = 휴대폰 시스템 알람 볼륨(1:1)
+
+현수 님 피드백: 앱의 `음량 100%` 가 작다. "시스템 소리를 내 휴대폰 음향소리랑 매칭시켜서 내가 원하는만큼
+제어되게 해야 하는데 안 되는거지".
+
+- 원인: v2.2 의 슬라이더는 `MediaPlayer.setVolume()`(앱 내부 배율)만 조절해, 폰의 `STREAM_ALARM` 볼륨이
+  낮으면 100% 로 올려도 그 한계에 갇혔다.
+- `AlarmVolume`(신규): `getStreamVolume/getStreamMaxVolume(STREAM_ALARM)` 로 폰 알람 볼륨을 읽고
+  `setStreamVolume(STREAM_ALARM, index, 0)` 으로 직접 바꾼다. %↔단계 환산(7/15 → 47%, 100% → 15/15).
+- 브릿지 `getSystemAlarmVolume()` / `setSystemAlarmVolume(pct)` — 바뀐 실제 값을 돌려줘 슬라이더가
+  폰 볼륨에 맞춰진다. 설정 시트를 열면 지금 폰 알람 볼륨(예: `47% · 7/15`)을 그대로 보여 준다.
+- `폰 알람 볼륨도 최대로` 토글 제거(슬라이더가 곧 폰 볼륨). `+6/+12dB` 부스트는 폰 최대 위에 더한다.
+- `MainActivity.setVolumeControlStream(STREAM_ALARM)` + `VOLUME_CHANGED_ACTION` 수신으로 물리 볼륨 키
+  변경도 슬라이더에 반영. 울릴 때 볼륨을 올렸다 되돌리던 동작은 없애고 MediaPlayer 는 100% 로 재생한다
+  (앱 배율×시스템 볼륨 이중 감쇠 제거). 폰 볼륨이 0(무음)이고 마지막 설정값이 0이 아니면 복원한다.
+- `MODIFY_AUDIO_SETTINGS` 권한, versionCode 10 / versionName 2.3.
+- 검증: `testDebugUnitTest` 9/9 · `lintDebug` 0 errors · `test_native.py` 129/129 ·
+  `test_app.py` 55/55 · `test_clock.py` 20/20 · `test_live.py` ALL PASS.
+- APK: `downloads/포스코교대알람-v2.3.apk`.
+
 ## 웹앱과의 관계
 
 - 웹앱 JS 는 `window.NativeAlarm` 이 있을 때만 네이티브 경로를 쓴다. 브라우저(배포본)에서는
@@ -182,4 +202,4 @@ sh build_local.sh
    (기기에 따라 `다른 앱 위에 표시`도 함께 켜면 잠금화면 알람이 더 확실하다.)
 3. `10초 뒤 테스트 알람`으로 **화면을 잠근 상태에서** 잠금화면 위 알람 화면이 뜨는지 확인한다.
 
-minSdk 24 / targetSdk 34 / versionCode 8 / versionName 2.1
+minSdk 24 / targetSdk 34 / versionCode 10 / versionName 2.3
