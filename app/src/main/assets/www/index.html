@@ -365,7 +365,7 @@
       </div>
     </section>
 
-    <div class="footer">교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.2</div>
+    <div class="footer">교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.3</div>
   </main>
 </div>
 
@@ -390,6 +390,7 @@
         <input type="range" id="volRange" min="10" max="100" step="5">
         <span id="volTxt" class="tiny" style="width:40px;text-align:right">100%</span>
       </div>
+      <div id="volNote" class="tiny" style="margin:-2px 0 6px 53px;color:#8C98AC">이 앱 안에서만 쓰는 음량이에요.</div>
       <div id="toneGroup">
         <div class="seg" id="soundSeg" style="margin-top:6px">
           <button data-sound="bell">🔔 부드러운 벨</button>
@@ -410,16 +411,12 @@
           </div>
         </div>
         <div class="drow" style="display:block">
-          <span>크게 키우기<em class="tiny" style="display:block;font-style:normal;margin-top:1px">울리는 소리를 더 키우는 부스트</em></span>
+          <span>크게 키우기<em class="tiny" style="display:block;font-style:normal;margin-top:1px">폰 최대 볼륨 위에서 더 키우는 부스트</em></span>
           <div class="seg" id="boostSeg" style="margin:7px 0 0">
             <button data-boost="0">기본</button>
             <button data-boost="6">+6dB</button>
             <button data-boost="12">+12dB</button>
           </div>
-        </div>
-        <div class="drow">
-          <span>폰 알람 볼륨도 최대로<em class="tiny" style="display:block;font-style:normal;margin-top:1px">울릴 때만 올리고, 끄면 원래대로 돌려놔요</em></span>
-          <label class="switch"><input type="checkbox" id="sysVolToggle" checked><span></span></label>
         </div>
         <button id="btnSoundTest" class="ghost-btn" style="margin-top:8px">🔔 지금 설정으로 소리 테스트 (6초)</button>
         <div class="drow">
@@ -489,7 +486,7 @@
       <p class="hint">울리면 <b>잠금을 풀지 않고</b> 잠금화면 위 알람 화면의 <b>알람 해제</b> 버튼을 누르면 바로 꺼져요. 그러려면 위 네 항목이 모두 켜져 있어야 해요. 꺼져 있으면 잠금화면에 <b>알림 카드만</b> 뜨고, 그때는 카드의 <b>끄기</b> 버튼을 누르거나 카드를 옆으로 밀어도 알람이 꺼져요(잠금 해제 필요 없음). 테스트는 꼭 <b>화면을 잠근 상태</b>에서 해 보세요.</p>
     </div>
 
-    <div class="foot-note">교대 알람 v2.2 · 교대달력 읽기 전용 연동</div>
+    <div class="foot-note">교대 알람 v2.3 · 교대달력 읽기 전용 연동</div>
   </div>
 </div>
 
@@ -626,13 +623,12 @@ const DEFAULT_SETTINGS = {
     off:      { on:false, time:'08:00', alarms:[{ id:'a1', time:'08:00', mode:'sound', enabled:true }] }
   },
   sound: 'bell',
+  /** v2.3: 음량 — 네이티브에서는 **휴대폰의 실제 알람 볼륨(STREAM_ALARM)과 1:1**. 브라우저에서는 앱 내 배율(10~100). */
   volume: 100,
-  /** v2.2: 알람 소리를 더 키우는 부스트(LoudnessEnhancer) — 0 / 6 / 12 dB. */
+  /** v2.2: 알람 소리를 더 키우는 부스트(LoudnessEnhancer) — 0 / 6 / 12 dB. 폰 최대 볼륨 위에 더한다. */
   boost: 6,
   /** v2.2: 시작 방식 — 'full'(바로 최대) / 'quick'(3초) / 'slow'(8초 점점 크게). */
   startMode: 'quick',
-  /** v2.2: 울리는 동안 폰 알람 볼륨을 최대로 올리고 끄면 원래대로. */
-  sysVolMax: true,
   vibrate: true,
   fadeIn: false,
   topic: DEFAULT_TOPIC,
@@ -661,11 +657,18 @@ let settings = (() => {
     cfg.alarms = normAlarmList(raw.alarms, raw.time || def.time);
     s.types[k] = mirrorTypeTime(cfg);
   }
-  s.volume = Math.max(10, Math.min(100, Number(s.volume) || 0) || 100);
+  s.volume = Math.max(0, Math.min(100, Number(s.volume)));
+  if (!isFinite(s.volume)) s.volume = 100;
+  // 네이티브 앱은 0(무음)~100 — 폰 알람 볼륨과 1:1. 브라우저는 앱 내 배율(10~100).
+  const _nativeNow = (() => {
+    try { return !!(window.NativeAlarm && typeof window.NativeAlarm.syncAlarms === 'function'); }
+    catch(e){ return false; }
+  })();
+  if (!_nativeNow) s.volume = Math.max(10, s.volume);
   s.boost = [0, 6, 12].indexOf(Number(s.boost)) >= 0 ? Number(s.boost) : 6;
   // 예전 '점점 크게(fadeIn)' 설정을 시작 방식으로 옮긴다
   if (['full', 'quick', 'slow'].indexOf(s.startMode) < 0) s.startMode = s.fadeIn ? 'slow' : 'quick';
-  s.sysVolMax = s.sysVolMax !== false;
+  delete s.sysVolMax;   // v2.3: 슬라이더가 곧 폰 볼륨이라 토글을 없앨다
   return s;
 })();
 
@@ -872,6 +875,83 @@ const nativeAlarm = (() => {
   } catch(e){ return null; }
 })();
 function isNative(){ return !!nativeAlarm; }
+
+/* ---------- 음량 ↔ 휴대폰 알람 볼륨 (v2.3 — 1:1) ----------
+   네이티브에서는 앱 슬라이더가 곪 폰의 실제 알람 볼륨(STREAM_ALARM)이다.
+   · 설정 시트를 열면 폰의 지금 알람 볼륨(단계)을 읽어 슬라이더에 그대로 보여 준다.
+   · 슬라이더를 움직이면 그 자리에서 폰 알람 볼륨을 바꾼다(100% = 폰이 낼 수 있는 최대).
+   · 물리 볼륨 키로 폰 볼륨이 바뀌면 MainActivity 가 window.__nativeVolume 으로 알려 준다. */
+let sysVol = { pct: null, index: null, max: null };   // 네이티브에서 읽은 폰 알람 볼륨
+
+function volStepText(){
+  if (!sysVol || !(sysVol.max > 0)) return '';
+  return `${sysVol.index}/${sysVol.max}`;
+}
+
+function renderVolume(){
+  const el = $('volRange');
+  if (!el) return;
+  el.value = settings.volume;
+  const txt = $('volTxt');
+  if (txt) txt.textContent = settings.volume + '%';
+  const note = $('volNote');
+  if (!note) return;
+  if (!isNative()){
+    note.textContent = '이 앱 안에서만 쓰는 음량이에요.';
+    note.style.color = '#8C98AC';
+    return;
+  }
+  const step = volStepText();
+  if (settings.volume <= 0){
+    note.innerHTML = '무음 — 폰 알람 볼륨이 0이에요. 이대로 두면 알람이 <b>소리 없이</b> 울려요.'
+      + (step ? ` (${step})` : '');
+    note.style.color = '#FFB020';
+    return;
+  }
+  note.innerHTML = step
+    ? `휴대폰 알람 볼륨과 1:1 · 지금 폰 알람 <b>${step}</b>${sysVol.pct >= 100 ? ' (최대)' : ''}`
+    : '휴대폰 알람 볼륨과 1:1이에요.';
+  note.style.color = sysVol.pct >= 100 ? '#6FBF73' : '#8C98AC';
+}
+
+/** 폰의 실제 알람 볼륨을 읽어 슬라이더에 맞춘다(설정 시트를 열 때 — 폰이 기준). */
+function syncVolumeFromNative(){
+  if (!isNative()) return;
+  let info = null;
+  try{ info = JSON.parse(nativeAlarm.getSystemAlarmVolume ? nativeAlarm.getSystemAlarmVolume() : '{}'); }
+  catch(e){ info = null; }
+  if (!info || typeof info.pct !== 'number' || !(info.max > 0)) return;
+  sysVol = { pct: info.pct, index: info.index, max: info.max };
+  if (settings.volume !== info.pct){
+    settings.volume = info.pct;
+    writeJSON(LS.settings, settings);
+  }
+  renderVolume();
+}
+
+/** 슬라이더 %를 폰 알람 볼륨에 적용한다(네이티브) / 앱 내 음량에 적용한다(브라우저). */
+function applyVolume(pct){
+  pct = Math.max(0, Math.min(100, Math.round(Number(pct) || 0)));
+  if (!isNative()){
+    settings.volume = Math.max(10, pct);
+    writeJSON(LS.settings, settings);
+    renderVolume();
+    return;
+  }
+  let info = null;
+  try{
+    if (nativeAlarm.setVolume) nativeAlarm.setVolume(pct);
+    info = JSON.parse((nativeAlarm.setSystemAlarmVolume ? nativeAlarm.setSystemAlarmVolume(pct) : '') || '{}');
+  }catch(e){ info = null; }
+  if (info && typeof info.pct === 'number' && info.max > 0){
+    sysVol = { pct: info.pct, index: info.index, max: info.max };
+    settings.volume = info.pct;          // 폰이 바꿔 준 실제 값으로 맞춘다
+  } else {
+    settings.volume = pct;
+  }
+  writeJSON(LS.settings, settings);
+  renderVolume();
+}
 
 function nativeAlarmList(){
   const now = Date.now();
@@ -1544,10 +1624,12 @@ $('masterToggle').addEventListener('change', e => {
 
 $('btnTest').addEventListener('click', () => {
   if (nativeAlarm){
-    /* 네이티브에서는 폰 알람 스트림·부스트·고른 알람음으로 실제 재생해 본다(v2.2) */
+    /* 네이티브에서는 폰 알람 스트림·부스트·고른 알람음으로 실제 재생해 본다(v2.3) */
     try{ nativeAlarm.testSound(); }catch(e){}
-    toast(`선택한 알람음으로 6초 재생 · 음량 ${settings.volume}%`
-      + (settings.boost ? ` · +${settings.boost}dB` : '') + (settings.sysVolMax !== false ? ' · 알람 볼륨 최대' : ''));
+    const step = volStepText();
+    toast(`선택한 알람음으로 6초 재생 · 폰 알람 볼륨 ${step || settings.volume + '%'}`
+      + (settings.boost ? ` · +${settings.boost}dB` : '')
+      + (settings.volume <= 0 ? ' · 지금은 무음이에요' : ''));
     return;
   }
   strike();
@@ -1617,19 +1699,18 @@ function addMinutes(hm, add){
 function openSettings(){
   settings.types && syncSettingsUI();
   $('settingsOverlay').classList.remove('hidden');
+  /* v2.3: 시트를 열면 폰의 실제 알람 볼륨을 읽어 슬라이더에 맞춘다 */
+  syncVolumeFromNative();
 }
 function syncSettingsUI(){
   renderTypeAlarms();
   $('soundSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.sound === settings.sound));
-  $('volRange').value = settings.volume;
-  $('volTxt').textContent = settings.volume + '%';
+  renderVolume();
   $('vibToggle').checked = !!settings.vibrate;
   const startSeg = $('startSeg');
   if (startSeg) startSeg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.start === settings.startMode));
   const boostSeg = $('boostSeg');
   if (boostSeg) boostSeg.querySelectorAll('button').forEach(b => b.classList.toggle('on', Number(b.dataset.boost) === Number(settings.boost)));
-  const sysVol = $('sysVolToggle');
-  if (sysVol) sysVol.checked = settings.sysVolMax !== false;
   $('topicInput').value = settings.topic || '';
   setSyncDetail();
   setWakeState(wakeSupported ? (wakeLock ? '유지 중' : '대기') : '미지원');
@@ -1700,36 +1781,45 @@ if (isNative()){
       toast(settings.boost ? `알람을 ${settings.boost}dB 더 크게 울려요` : '부스트 없이 원래 음량으로 울려요');
     });
   });
-  const sysVol = $('sysVolToggle');
-  if (sysVol) sysVol.addEventListener('change', () => {
-    settings.sysVolMax = sysVol.checked;
-    writeJSON(LS.settings, settings);
-    try{ nativeAlarm.setSystemVolumeMax(settings.sysVolMax); }catch(e){}
-    toast(settings.sysVolMax ? '울릴 때 폰 알람 볼륨을 최대로 올렸다가 되돌려요' : '폰 알람 볼륨은 그대로 두고 이 앱 음량만 써요');
-  });
+  /* v2.3: 음량 슬라이더 = 휴대폰 알람 볼륨(STREAM_ALARM) 1:1 — 단계 단위로 맞춘다 */
+  const volEl = $('volRange');
+  if (volEl){ volEl.min = '0'; volEl.step = '1'; }
+  syncVolumeFromNative();
+  window.__nativeVolume = function(pct, index, max){
+    if (typeof pct !== 'number' || !(max > 0)) return;
+    sysVol = { pct: pct, index: index, max: max };
+    if (settings.volume !== pct){
+      settings.volume = pct;
+      writeJSON(LS.settings, settings);
+      try{ nativeAlarm.setVolume && nativeAlarm.setVolume(pct); }catch(e){}
+    }
+    renderVolume();
+  };
   const soundTestBtn = $('btnSoundTest');
   if (soundTestBtn) soundTestBtn.addEventListener('click', () => {
     try{ nativeAlarm.testSound(); }catch(e){}
-    toast(`지금 설정으로 6초 재생 · 폰 소리도 확인해 보세요 (음량 ${settings.volume}%`
-      + (settings.boost ? ` · +${settings.boost}dB` : '') + ')');
+    const step = volStepText();
+    toast(`지금 설정으로 6초 재생 · 폰 알람 볼륨 ${step || settings.volume + '%'}`
+      + (settings.boost ? ` · +${settings.boost}dB` : '')
+      + (settings.volume <= 0 ? ' · 지금은 무음이에요' : ''));
   });
   /* 저장된 음량·부스트·시작 방식을 네이티브에 맞춰 둔다 */
   try{
     nativeAlarm.setVolume && nativeAlarm.setVolume(settings.volume);
     nativeAlarm.setBoost && nativeAlarm.setBoost(settings.boost);
     nativeAlarm.setStartMode && nativeAlarm.setStartMode(settings.startMode);
-    nativeAlarm.setSystemVolumeMax && nativeAlarm.setSystemVolumeMax(settings.sysVolMax !== false);
   }catch(e){}
   const clockTitle = $('clockOverlay').querySelector('h2');
   if (clockTitle) clockTitle.textContent = '⏰ 네이티브 알람 상태';
   const foot = document.querySelector('.footer');
-  if (foot) foot.textContent = '교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.2 · 네이티브 알람';
+  if (foot) foot.textContent = '교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.3 · 네이티브 알람';
   $('btnHelp').textContent = 'ℹ️ 이 앱은 닫아도 알람이 울려요 — 확인 사항';
   $('helpBody').innerHTML = '<b>이 앱은 폰의 알람으로 직접 예약</b>하기 때문에 앱을 닫거나 화면이 잠겨 있어도 정확한 시각에 울려요.'
     + '<ol>'
     + '<li>목록의 예정 알람 14일치가 폰 알람으로 자동 등록돼요. 주간·야간마다 알람을 여러 개 둘 수 있고, 알람마다 <b>진동만 / 소리+진동</b>을 고를 수 있어요.</li>'
     + '<li>날짜를 탭하면 <b>그 날 알람 목록 전체</b>가 나와요. 하나씩 켜고/끄고/바꾼 뒤 저장하면 그 날은 <b>그 목록만</b> 울리고 기본 알람은 함께 울리지 않아요. 예외를 해제하면 기본값을 따라가요.</li>'
     + '<li>앱을 열지 않아도 <b>6시간마다 백그라운드에서 교대달력을 확인</b>해 바뀐 근무·휴가를 알람에 다시 반영해요. 설정에서 알람음(폰의 알람음·벨소리·알림음) · <b>음량</b> · <b>부스트(+6/+12dB)</b> · <b>시작 방식</b>도 고를 수 있고, <b>소리 테스트</b>로 바로 체감할 수 있어요.</li>'
+    + '<li><b>음량 슬라이더는 폰의 알람 볼륨과 1:1</b>이에요. 슬라이더를 움직이면 휴대폰의 실제 알람 볼륨이 그 자리에서 같이 바뀌고, <b>100%</b>는 폰이 낼 수 있는 <b>최대 알람 볼륨</b>이에요. 폰의 물리 볼륨 키로 바꿔도 이 화면에 바로 반영돼요. 그 위에 <b>+6/+12dB</b> 부스트를 더할 수 있어요.</li>'
     + '<li><span class="kb">⚙️ 설정 → 안드로이드 네이티브 알람</span>에서 알림 · 정확한 알람 · <b>잠금화면 전체화면 알림</b> · 배터리 예외를 모두 켜 주세요. 잠금화면 전체화면 알림이 꺼져 있으면 잠금화면에 알람 화면이 뜨지 않고 알림만 떠요.</li>'
     + '<li>울리면 잠금을 풀지 않아도 잠금화면 위에 알람 화면이 떠요. <b>알람 해제</b> 버튼을 누르면 바로 꺼져요(5분 뒤 다시는 별도 버튼). 만약 알람 화면 없이 <b>알림으로만</b> 떴다면 알림의 <b>끄기</b> 버튼을 누르거나 알림을 옆으로 밀면 그대로 꺼져요(잠금 해제 필요 없음).</li>'
     + '<li>폰 제조사(삼성 등)의 <b>절전·백그라운드 제한</b>에서 이 앱을 예외로 두면 더 확실해요.</li>'
@@ -1817,14 +1907,18 @@ $('soundSeg').querySelectorAll('button').forEach(b => {
   });
 });
 $('volRange').addEventListener('input', e => {
-  settings.volume = Number(e.target.value);
-  $('volTxt').textContent = settings.volume + '%';
-  writeJSON(LS.settings, settings);
-  if (nativeAlarm){
-    try{ nativeAlarm.setVolume && nativeAlarm.setVolume(settings.volume); }catch(err){}
+  /* v2.3: 슬라이더를 움직이면 그 자리에서 폰 알람 볼륨이 바뀐다(1:1) */
+  applyVolume(Number(e.target.value));
+});
+$('volRange').addEventListener('change', e => {
+  if (!isNative()){ strike(); return; }
+  const want = Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0)));
+  if (settings.volume !== want){
+    toast(`휴대폰이 앱의 알람 볼륨 변경을 막았어요 · 폰 알람 볼륨은 ${volStepText() || '그대로'}예요`);
+  } else if (settings.volume <= 0){
+    toast('폰 알람 볼륨이 0이에요 · 이대로면 알람이 소리 없이 울려요');
   }
 });
-$('volRange').addEventListener('change', () => { if (!nativeAlarm) strike(); });
 $('vibToggle').addEventListener('change', e => {
   settings.vibrate = e.target.checked;
   writeJSON(LS.settings, settings);

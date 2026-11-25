@@ -75,10 +75,25 @@ class NativeAlarmBridge(private val activity: MainActivity) {
         RingPrefs.setFadeIn(activity, on)
     }
 
-    /** 알람 음량(%) — 10~100 (v2.2). */
+    /** 알람 음량(%) — 10~100 (v2.2 호환). v2.3 부터는 슬라이더가 폰 볼륨을 직접 바꾸므로 [setSystemAlarmVolume] 을 쓴다. */
     @JavascriptInterface
     fun setVolume(pct: Int) {
         RingPrefs.setVolume(activity, pct)
+    }
+
+    /** 지금 휴대폰의 실제 알람 볼륨 — {"pct":47,"index":7,"max":15,"muted":false} (v2.3). */
+    @JavascriptInterface
+    fun getSystemAlarmVolume(): String = AlarmVolume.current(activity).toJson()
+
+    /**
+     * 앱 슬라이더 %를 휴대폰의 실제 알람 볼륨(STREAM_ALARM)으로 바꾼다 (v2.3, 1:1).
+     * 바뀐 **실제 값**을 돌려줘 슬라이더를 실제 폰 볼륨에 맞춘다(기기가 막아 두면 요청값과 다를 수 있다).
+     */
+    @JavascriptInterface
+    fun setSystemAlarmVolume(pct: Int): String {
+        val level = AlarmVolume.setPercent(activity, pct)
+        RingPrefs.setVolume(activity, level.pct)
+        return level.toJson()
     }
 
     /** 소리를 더 키우는 부스트(dB) — 0 / 6 / 12 (v2.2). */
@@ -93,10 +108,11 @@ class NativeAlarmBridge(private val activity: MainActivity) {
         RingPrefs.setStartMode(activity, mode)
     }
 
-    /** 울리는 동안 폰의 알람 볼륨을 최대로 올렸다가 되돌릴지 (v2.2). */
+    /** 울리는 동안 폰의 알람 볼륨을 최대로 올렸다가 되돌릴지 (v2.2 — v2.3 에서 슬라이더가 폰 볼륨을 직접 제어하므로 토글을 없앴다). */
     @JavascriptInterface
+    @Suppress("UNUSED_PARAMETER")
     fun setSystemVolumeMax(on: Boolean) {
-        RingPrefs.setSystemVolumeMax(activity, on)
+        // v2.3 호환용 빈 메서드: 예전 웹이 남아 있어도 오류 없이 지나간다(동작 없음).
     }
 
     /** 지금 설정(알람음·음량·부스트·시작 방식)으로 6초 소리 테스트 — 다시 누르면 멈춘다 (v2.2). */

@@ -3,10 +3,13 @@ package com.posco.shiftalarm
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.media.AudioManager
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
@@ -26,13 +29,22 @@ class MainActivity : Activity() {
         private const val REQ_NOTIFICATIONS = 1001
         private const val REQ_RINGTONE = 1002
         private const val URL_APP = "file:///android_asset/www/index.html"
+        /** 시스템이 보내는 볼륨 변경 브로드캐스트(공개 상수가 아니라 문자열로 쓴다). */
+        private const val VOLUME_CHANGED = "android.media.VOLUME_CHANGED_ACTION"
+        private const val EXTRA_VOLUME_STREAM_TYPE = "android.media.EXTRA_VOLUME_STREAM_TYPE"
         private const val PREF_UI = "shift_alarm_ui"
-        /** 앱 버전 — 업데이트 설치 뒤에는 예전 버전이 남긴 알람을 모두 지우고 다시 건다(v2.2). */
-        const val APP_VERSION = 9
-        const val VERSION_NAME = "2.2"
+        /** 앱 버전 — 업데이트 설치 뒤에는 예전 버전이 남긴 알람을 모두 지우고 다시 건다(v2.3). */
+        const val APP_VERSION = 10
+        const val VERSION_NAME = "2.3"
     }
 
     private lateinit var web: WebView
+
+    /** 물리 볼륨 키로 폰 알람 볼륨이 바뀌면 웹 슬라이더에 바로 반영한다(v2.3). */
+    private var volumeReceiver: BroadcastReceiver? = null
+
+    /** 마지막으로 웹에 알린 폰 알람 단계 — 같은 값을 반복해 보내지 않는다. */
+    private var lastVolumeIndex = -1
 
     /** 권한 안내를 이어서 진행할 때의 대기 목록·현재 항목 */
     private val permWalk = ArrayDeque<String>()
@@ -41,6 +53,8 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        // v2.3: 앱 화면에서 물리 볼륨 키를 누르면 미디어가 아니라 **알람** 볼륨이 바뀐다
+        setVolumeControlStream(AudioManager.STREAM_ALARM)
 
         web = findViewById(R.id.web)
         web.setBackgroundColor(Color.parseColor("#0B0F17"))
@@ -52,7 +66,7 @@ class MainActivity : Activity() {
             allowContentAccess = true
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_DEFAULT
-            userAgentString = userAgentString + " PoscoShiftAlarm/2.2"
+            userAgentString = userAgentString + " PoscoShiftAlarm/2.3"
         }
         web.addJavascriptInterface(NativeAlarmBridge(this), "NativeAlarm")
         web.webChromeClient = WebChromeClient()
@@ -71,6 +85,8 @@ class MainActivity : Activity() {
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 notifyWeb()
+                lastVolumeIndex = -1   // 페이지를 새로 읽었으면 같은 값이라도 한 번은 보낸다
+                pushAlarmVolumeToWeb()
             }
         }
 
@@ -101,6 +117,8 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        // v2.3: 앱으로 돌아오면 폰의 실제 알람 볼륨을 다시 읽어 슬라이더에 맞춘다
+        registerVolumeWatcher()
         // 권한 안내를 여러 개 이어서 진행 중이면, 방금 열어 둔 설정을 켜고 돌아왔는지 확인해
         // 다음 항목으로 넘어간다(v1.3 — 한 번에 하나씩만 열어 주던 v1.2 는 5번 눌러야 했다)
         val awaiting = awaitingPerm
@@ -110,6 +128,59 @@ class MainActivity : Activity() {
             return
         }
         notifyWeb()
+        pushAlarmVolumeToWeb()
+    }
+
+    override fun onPause() {
+        unregisterVolumeWatcher()
+        super.onPause()
+    }
+
+    /* ---------- 휴대폰 알람 볼륨 감시 (v2.3) ---------- */
+
+    private fun registerVolumeWatcher() {
+        if (volumeReceiver != null) return
+        val r = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, i: Intent?) {
+                if (i == null || i.action != VOLUME_CHANGED) return
+                // 다른 스트림(미디어 등)이 바뀐 경우는 건너뛴다
+                val stream = i.getIntExtra(EXTRA_VOLUME_STREAM_TYPE, -1)
+                if (stream != -1 && stream != AudioManager.STREAM_ALARM) return
+                pushAlarmVolumeToWeb()
+            }
+        }
+        try {
+            ContextCompat.registerReceiver(
+                this, r, IntentFilter(VOLUME_CHANGED), ContextCompat.RECEIVER_EXPORTED
+            )
+            volumeReceiver = r
+        } catch (e: Exception) {
+            volumeReceiver = null
+        }
+    }
+
+    private fun unregisterVolumeWatcher() {
+        val r = volumeReceiver ?: return
+        volumeReceiver = null
+        try {
+            unregisterReceiver(r)
+        } catch (e: Exception) {
+        }
+    }
+
+    /** 지금 폰의 실제 알람 볼륨을 웹(설정 시트 슬라이더)에 알린다. */
+    fun pushAlarmVolumeToWeb() {
+        try {
+            val lv = AlarmVolume.current(this)
+            if (lv.max <= 0) return
+            if (lv.index == lastVolumeIndex) return
+            lastVolumeIndex = lv.index
+            web.evaluateJavascript(
+                "try{if(window.__nativeVolume)window.__nativeVolume(${lv.pct},${lv.index},${lv.max});}catch(e){}",
+                null
+            )
+        } catch (e: Exception) {
+        }
     }
 
     /** 권한 상태가 바뀌었을 수 있으니 웹 UI 를 새로 고치고 알람을 다시 등록한다. */
@@ -304,6 +375,7 @@ class MainActivity : Activity() {
             RingTester.stop()
         } catch (e: Exception) {
         }
+        unregisterVolumeWatcher()
         try {
             web.destroy()
         } catch (e: Exception) {
@@ -339,7 +411,11 @@ class MainActivity : Activity() {
             o.put("volume", RingPrefs.volume(this))
             o.put("boost", RingPrefs.boostDb(this))
             o.put("startMode", RingPrefs.startMode(this))
-            o.put("systemVolumeMax", RingPrefs.systemVolumeMax(this))
+            // v2.3: 휴대폰의 실제 알람 볼륨(슬라이더와 1:1)
+            val alarmVol = AlarmVolume.current(this)
+            o.put("sysAlarmVol", alarmVol.pct)
+            o.put("sysAlarmIndex", alarmVol.index)
+            o.put("sysAlarmMax", alarmVol.max)
             o.put("fadeIn", RingPrefs.fadeIn(this))
             o.put("pendingAlarms", AlarmScheduler.trackedCount(this))
             o.put("bgSync", true)

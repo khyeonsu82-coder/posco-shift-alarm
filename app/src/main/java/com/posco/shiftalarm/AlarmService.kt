@@ -505,8 +505,8 @@ class AlarmService : Service() {
      * 실제 출근 알람.
      *  - mode = "vibrate": 벨소리 없이 진동만 반복(해제할 때까지).
      *  - mode = "sound": 설정에서 고른 알람음 반복 + 진동 반복.
-     *    v2.2 부터 음량(%) · 부스트(+6/+12dB) · 시작 방식(바로 최대/3초/8초)을 그대로 적용하고,
-     *    설정이 켜져 있으면 울리는 동안만 폰의 알람 볼륨을 최대로 올린다.
+     *    v2.3 부터 음량은 **휴대폰의 실제 알람 볼륨**이 담당한다(슬라이더 = STREAM_ALARM, 1:1).
+     *    재생은 MediaPlayer 100% + 부스트(+6/+12dB) + 시작 방식(바로 최대/3초/8초)으로 한다.
      */
     private fun startRinging(a: ShiftAlarm) {
         if (!a.isVibrateOnly()) startSound()
@@ -517,9 +517,9 @@ class AlarmService : Service() {
 
     /** 설정한 알람음(없으면 시스템 기본 알람음)을 반복 재생한다. */
     private fun startSound() {
-        // 폰 알람 볼륨을 최대로(설정 시) — 한 번만 올리고 끌 때 한 번 되돌린다
-        AlarmAudio.raiseStreamVolume(this)
-        // ① 고른 알람음을 MediaPlayer 로 — 음량·부스트·시작 방식을 모두 적용할 수 있다
+        // v2.3: 음량은 휴대폰 알람 볼륨 그대로. 0(무음)으로 떨어져 있을 때만 마지막 설정값으로 되살린다.
+        AlarmVolume.ensureNotMuted(this)
+        // 고른 알람음을 MediaPlayer 로 — 부스트·시작 방식을 적용할 수 있다(음량은 시스템 볼륨이 담당)
         val mp = AlarmAudio.newPlayer(this)
         if (mp != null) {
             try {
@@ -664,8 +664,6 @@ class AlarmService : Service() {
         } catch (e: Exception) {
         }
         vibrator = null
-        // 울리는 동안 올렸던 폰 알람 볼륨을 원래대로 돌린다(v2.2)
-        AlarmAudio.restoreStreamVolume(this)
         try {
             ringWake?.let { if (it.isHeld) it.release() }
         } catch (e: Exception) {
@@ -690,7 +688,6 @@ class AlarmService : Service() {
         } catch (e: Exception) {
         }
         vibrator = null
-        AlarmAudio.restoreStreamVolume(this)
         try {
             ringWake?.let { if (it.isHeld) it.release() }
         } catch (e: Exception) {
@@ -749,7 +746,6 @@ class AlarmService : Service() {
             vibrator?.cancel()
         } catch (e: Exception) {
         }
-        AlarmAudio.restoreStreamVolume(this)
         try {
             ringWake?.let { if (it.isHeld) it.release() }
         } catch (e: Exception) {

@@ -7,10 +7,12 @@ import android.os.Handler
 import android.os.Looper
 
 /**
- * 설정 화면·메인의 "소리 테스트" (v2.2).
+ * 설정 화면·메인의 "소리 테스트" (v2.3).
  *
- * 알람이 실제로 울릴 때와 **같은 조건**(폰 알람 볼륨 최대 · 고른 음량 · 부스트 · 시작 방식)으로
- * 6초만 재생해, 바꾼 설정을 그 자리에서 귀로 확인할 수 있게 한다. 끝나면 볼륨을 원래대로 되돌린다.
+ * 알람이 실제로 울릴 때와 **같은 조건**으로 6초만 재생한다:
+ *  - 휴대폰의 지금 알람 볼륨(`STREAM_ALARM`) 그대로 — 슬라이더가 곧 폰 볼륨이라 추가로 건드리지 않는다.
+ *    (다만 0으로 떨어져 있으면 [AlarmVolume.ensureNotMuted] 로 마지막 설정값을 되살린다 — 실제 알람과 같다.)
+ *  - 선택한 부스트(`0/+6/+12dB`) · 선택한 알람음 · 시작 방식(페이드).
  */
 object RingTester {
     private const val TEST_MS = 6_000L
@@ -18,7 +20,6 @@ object RingTester {
     private var player: MediaPlayer? = null
     private var enhancer: LoudnessEnhancer? = null
     private var fadeTask: Runnable? = null
-    private var appCtx: Context? = null
     private val handler = Handler(Looper.getMainLooper())
     private val stopTask = Runnable { stop() }
 
@@ -34,8 +35,8 @@ object RingTester {
         val app = ctx.applicationContext
         val mp = AlarmAudio.newPlayer(app) ?: return
         try {
-            appCtx = app
-            AlarmAudio.raiseStreamVolume(app)
+            // 실제 알람과 같은 조건: 무음(0)으로 떨어져 있으면 마지막 설정값으로 되살린다
+            AlarmVolume.ensureNotMuted(app)
             enhancer = AlarmAudio.boost(app, mp.audioSessionId)
             val level = AlarmAudio.playerLevel(app)
             val start = level * AlarmAudio.startLevel(app)
@@ -87,7 +88,5 @@ object RingTester {
         player = null
         AlarmAudio.releaseBoost(enhancer)
         enhancer = null
-        appCtx?.let { AlarmAudio.restoreStreamVolume(it) }
-        appCtx = null
     }
 }

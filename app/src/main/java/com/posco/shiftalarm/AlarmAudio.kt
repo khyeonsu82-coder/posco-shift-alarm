@@ -1,58 +1,23 @@
 package com.posco.shiftalarm
 
 import android.content.Context
-import android.media.AudioManager
 import android.media.audiofx.LoudnessEnhancer
 import android.media.MediaPlayer
 import android.os.Build
 
 /**
- * 알람 소리를 실제로 크게 만드는 부분 (v2.2).
+ * 알람 소리를 실제로 크게 만드는 부분 (v2.3).
  *
- * 삼성 등 일부 기기는 알람 스트림(STREAM_ALARM) 볼륨이 낮게 잡혀 있거나 부드러운 기본음 때문에
- * 실제 알람이 작게 들린다. 그래서
- *  1) 울리는 동안에만 폰의 알람 볼륨을 최대로 올리고, 끄면 원래 값으로 되돌린다(설정에서 끌 수 있다).
- *  2) `LoudnessEnhancer`(API 19+)로 목표 이득을 +6dB / +12dB 올린다(지원하지 않는 기기에서는 조용히 건너뛴다).
- *  3) 사용자가 고른 음량(%)을 MediaPlayer 음량으로 함께 적용한다.
+ * v2.3 에서 바뀐 것 — **음량은 폰의 알람 볼륨이 담당한다.**
+ *  - 앱 슬라이더는 `AlarmVolume` 을 통해 휴대폰의 `STREAM_ALARM` 볼륨을 직접 바꾼다(1:1).
+ *    그래서 울릴 때 따로 볼륨을 올렸다가 되돌리던 v2.2 의 동작(올리기/복원)은 없앴다.
+ *    슬라이더로 맞춘 폰 볼륨이 그대로 쓰인다.
+ *  - `MediaPlayer` 는 항상 100%(`playerLevel` = 1.0)로 재생한다. 앱 배율을 곱하면
+ *    시스템 볼륨과 이중으로 줄어들어 "100% 인데 작다"가 되기 때문이다.
+ *  - 그 위에 `LoudnessEnhancer`(API 19+)로 +6dB / +12dB 부스트를 더한다(지원하지 않는 기기는 조용히 건너뛴다).
+ *  - 시작 방식(바로 최대 / 3초 / 8초 페이드)은 MediaPlayer 배율을 1.0 까지 올리며 만든다.
  */
 object AlarmAudio {
-
-    /** 볼륨을 올리기 전의 값. -1 이면 아직 올리지 않았다. */
-    private var savedStreamVolume = -1
-
-    /** 지금 볼륨을 올려 쓰는 곳(알람 서비스·소리 테스트)의 수 — 마지막 하나가 끝날 때 되돌린다. */
-    private var holders = 0
-
-    private fun audio(ctx: Context) =
-        ctx.applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-
-    /** 알람 스트림 볼륨을 최대로(설정이 켜져 있을 때만). 끄면 [restoreStreamVolume] 으로 되돌린다. */
-    fun raiseStreamVolume(ctx: Context) {
-        if (!RingPrefs.systemVolumeMax(ctx)) return
-        holders++
-        try {
-            val am = audio(ctx)
-            val max = am.getStreamMaxVolume(AudioManager.STREAM_ALARM)
-            if (max <= 0) return
-            if (savedStreamVolume < 0) savedStreamVolume = am.getStreamVolume(AudioManager.STREAM_ALARM)
-            if (am.getStreamVolume(AudioManager.STREAM_ALARM) < max) {
-                am.setStreamVolume(AudioManager.STREAM_ALARM, max, 0)
-            }
-        } catch (e: Exception) {
-            // 볼륨을 못 바꾸는 기기(정책 제한)는 그냥 진행한다
-        }
-    }
-
-    fun restoreStreamVolume(ctx: Context) {
-        if (holders > 0) holders--
-        if (holders > 0) return
-        if (savedStreamVolume < 0) return
-        try {
-            audio(ctx).setStreamVolume(AudioManager.STREAM_ALARM, savedStreamVolume, 0)
-        } catch (e: Exception) {
-        }
-        savedStreamVolume = -1
-    }
 
     /** 부스트. 지원하지 않거나 세션이 없으면 null. */
     fun boost(ctx: Context, sessionId: Int): LoudnessEnhancer? {
@@ -91,8 +56,12 @@ object AlarmAudio {
         else -> 0f
     }
 
-    /** 사용자가 고른 음량(0~1). */
-    fun playerLevel(ctx: Context): Float = (RingPrefs.volume(ctx) / 100f).coerceIn(0f, 1f)
+    /**
+     * MediaPlayer 배율 — v2.3 부터 **항상 1.0**.
+     * 사용자가 고른 음량은 휴대폰의 실제 알람 볼륨(STREAM_ALARM)으로 이미 적용돼 있다.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    fun playerLevel(ctx: Context): Float = 1f
 
     /** 고른 알람음으로 MediaPlayer 를 준비한다(실패하면 null). */
     fun newPlayer(ctx: Context): MediaPlayer? {
