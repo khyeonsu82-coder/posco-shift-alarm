@@ -177,6 +177,21 @@
   .slot-empty{padding:3px 0 3px 30px; font-size:11px; font-weight:700; color:#6E7B8F}
   .slot-time{background:#141C29; border:1px solid #2B3850; color:#E9EEF7; border-radius:9px;
     padding:5px 6px; font-size:12.5px; font-weight:800; font-variant-numeric:tabular-nums}
+  /* v2.4 — 시·분 숫자를 눌러 바로 타이핑. 기존 시계 피커는 오른쪽 🕘 아이콘으로 그대로 남긴다 */
+  .tfield{position:relative; display:inline-flex; align-items:center; flex:0 0 auto;
+    background:#141C29; border:1px solid #2B3850; border-radius:9px; padding:1px 1px 1px 2px}
+  .tfield:focus-within{border-color:#6B82A6; background:#18212F}
+  .tfield .tt-h, .tfield .tt-m{width:23px; padding:4px 0; border:0; border-radius:6px; background:transparent;
+    color:#E9EEF7; font:inherit; font-size:13.5px; font-weight:800; text-align:center;
+    font-variant-numeric:tabular-nums; caret-color:var(--amber)}
+  .tfield .tt-h:focus, .tfield .tt-m:focus{background:#22304A; outline:0; color:#fff}
+  .tfield .tt-c{color:#7C8AA0; font-size:12px; font-weight:800; line-height:1; margin:0 1px 1px}
+  .tfield .tt-clk{width:21px; height:26px; display:inline-flex; align-items:center; justify-content:center;
+    border:0; background:transparent; color:#8FA3BF; font-size:11px; line-height:1; padding:0}
+  .tfield .tt-clk:active{color:var(--amber)}
+  /* 기존 input[type=time] 은 아이콘 위에 투명하게 겹쳐 두어 누르면 지금처럼 폰 시계 다이얼로그가 열린다 */
+  .tfield input[type=time]{position:absolute; right:1px; top:1px; bottom:1px; width:23px; height:auto;
+    opacity:0; border:0; padding:0; margin:0; background:transparent}
   .mode-btn{background:#1B2434; border:1px solid #2B3850; color:#A9B6C9; border-radius:9px;
     padding:5px 7px; font-size:10.5px; font-weight:800; white-space:nowrap}
   .mode-btn.vib{background:#2B1F08; border-color:#6B4E12; color:var(--amber)}
@@ -358,6 +373,7 @@
         <ol>
           <li><b>탁상시계 모드</b>를 켜 두면 화면 잠금을 막고 정각에 알람이 울려요. 충전기 옆에 세워 두세요.</li>
           <li>중요한 날은 <span class="kb">⏰ 시계앱</span> 버튼을 눌러 다음 알람 시각을 확인하고, <b>시각 복사</b>로 폰의 기본 시계 앱에 직접 등록하세요. (웹앱에서는 보안상 자동 등록이 막혀 있어요.)</li>
+          <li><b>알람 시간은 시·분 숫자를 그냥 눌러</b> 바로 입력할 수 있어요(숫자 키패드). 오른쪽 <b>🕘</b> 아이콘을 누르면 지금처럼 폰의 시계 다이얼로그에서 고를 수도 있어요.</li>
           <li>캘린더에서 <b>추가 근무·휴가</b>를 바꾸면 이 앱은 2분 안에(앱을 여는 즉시) 자동으로 다시 맞춰요. 교대달력 원본은 읽기만 해요.</li>
           <li>폰이 <b>무음·진동 모드</b>면 알람 소리가 나지 않아요. 자기 전에 미디어 볼륨을 올려 두고 <span class="kb">🔔 소리 테스트</span>로 확인하세요.</li>
           <li>보조 수단: 휴대폰의 <b>ntfy 앱</b>에서 같은 동기화 코드를 구독하면 민지 님과의 캘린더 변경 알림을 받을 수 있어요. 알람을 대신 울려 주지는 않으니 중요한 날은 시계 앱 알람을 함께 맞춰 두세요.</li>
@@ -365,7 +381,7 @@
       </div>
     </section>
 
-    <div class="footer">교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.3</div>
+    <div class="footer">교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.4</div>
   </main>
 </div>
 
@@ -380,6 +396,7 @@
 
     <div class="group">
       <div class="group-title">근무별 알람 · 여러 개 추가 가능</div>
+      <p class="hint" style="margin:-2px 0 6px">시·분 숫자를 <b>눌러서 바로 입력</b>할 수 있어요. 오른쪽 <b>🕘</b>는 폰 시계에서 고르기.</p>
       <div id="typeAlarms"></div>
     </div>
 
@@ -486,7 +503,7 @@
       <p class="hint">울리면 <b>잠금을 풀지 않고</b> 잠금화면 위 알람 화면의 <b>알람 해제</b> 버튼을 누르면 바로 꺼져요. 그러려면 위 네 항목이 모두 켜져 있어야 해요. 꺼져 있으면 잠금화면에 <b>알림 카드만</b> 뜨고, 그때는 카드의 <b>끄기</b> 버튼을 누르거나 카드를 옆으로 밀어도 알람이 꺼져요(잠금 해제 필요 없음). 테스트는 꼭 <b>화면을 잠근 상태</b>에서 해 보세요.</p>
     </div>
 
-    <div class="foot-note">교대 알람 v2.3 · 교대달력 읽기 전용 연동</div>
+    <div class="foot-note">교대 알람 v2.4 · 교대달력 읽기 전용 연동</div>
   </div>
 </div>
 
@@ -508,6 +525,7 @@
         <label class="switch"><input type="checkbox" id="dOn"><span></span></label>
       </div>
       <div id="dSlots" class="slots"></div>
+      <div class="tiny" style="margin-top:6px;color:#6E7B8F">숫자를 눌러 바로 입력 · 🕘 는 폰 시계</div>
       <div class="tiny" id="dSum" style="margin-top:7px"></div>
       <button id="dAdd" class="slot-add">＋ 이 날만 알람 하나 더</button>
     </div>
@@ -753,6 +771,138 @@ function normTime(t, fallback){
   if (!/^([01]?\d|2[0-3]):([0-5]\d)$/.test(v)) return fallback || '07:00';
   const [h,m] = v.split(':');
   return String(Number(h)).padStart(2, '0') + ':' + m;
+}
+
+/* ---------- 시·분 숫자 직접 입력 (v2.4) ----------
+   현수 님 요청: "분 할 때 시간 맞추는 게 불편해. 그냥 시간, 분 클릭하면 숫자 바꿀 수 있도록."
+   표시된 시(HH)·분(MM) 숫자를 누르면 그 자리에서 숫자 키패드로 바로 입력한다.
+   기존 <input type="time"> 은 없애지 않고 🕘 아이콘 위에 투명하게 겹쳐 두어, 그 아이콘을 누르면
+   지금까지처럼 안드로이드 기본 시계 다이얼로그가 열린다(기존 기능 유지 + 추가).
+*/
+function timeFieldHTML(time, opts){
+  const o = opts || {};
+  const [h, m] = normTime(time, '07:00').split(':');
+  const aria = o.aria || '알람';
+  return `<span class="tfield">`
+    + `<input class="tt-h" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="${h}"
+         aria-label="${aria} 시 (0~23)" autocomplete="off" enterkeyhint="next">`
+    + `<span class="tt-c" aria-hidden="true">:</span>`
+    + `<input class="tt-m" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="${m}"
+         aria-label="${aria} 분 (0~59)" autocomplete="off" enterkeyhint="done">`
+    + `<button type="button" class="tt-clk" aria-label="${aria} 시계에서 고르기" title="시계에서 고르기">🕘</button>`
+    + `<input type="time" class="slot-time${o.cls ? ' ' + o.cls : ''}"${o.idAttr || ''} value="${h}:${m}"
+         step="60" aria-label="${aria} 시계에서 고르기">`
+    + `</span>`;
+}
+
+/** "06:40" 뒤에 붙는 조사 — 받침 있는 숫자(0·1·3·6·7·8)는 '으로', 나머지는 '로' */
+function roJosa(hm){
+  const last = String(hm).replace(/[^0-9]/g, '').slice(-1);
+  return '2459'.indexOf(last) >= 0 ? '로' : '으로';
+}
+
+/** 시·분 칸 값을 0~23 / 0~59 로 보정한 HH:MM (비어 있으면 00) */
+function clampHM(hv, mv){
+  const h = parseInt(String(hv).replace(/[^0-9]/g, ''), 10);
+  const m = parseInt(String(mv).replace(/[^0-9]/g, ''), 10);
+  return pad(Math.min(23, Math.max(0, isFinite(h) ? h : 0))) + ':'
+       + pad(Math.min(59, Math.max(0, isFinite(m) ? m : 0)));
+}
+
+/** .tfield 의 시·분 칸을 보정해 같은 값을 native input 에도 넣는다 */
+function syncFieldFromDigits(tf){
+  const hEl = tf.querySelector('.tt-h'), mEl = tf.querySelector('.tt-m');
+  const hm = clampHM(hEl ? hEl.value : '', mEl ? mEl.value : '');
+  if (hEl) hEl.value = hm.slice(0, 2);
+  if (mEl) mEl.value = hm.slice(3);
+  const nat = tf.querySelector('.slot-time');
+  if (nat && nat.value !== hm) nat.value = hm;
+  return hm;
+}
+
+/** 모델 시각 → .tfield 표시 (폰 시계 다이얼로그로 바꾼 값도 숫자 칸에 그대로 보인다) */
+function setFieldTime(tf, time){
+  if (!tf) return;
+  const [h, m] = normTime(time, '07:00').split(':');
+  const hEl = tf.querySelector('.tt-h'), mEl = tf.querySelector('.tt-m');
+  if (hEl && document.activeElement !== hEl) hEl.value = h;
+  if (mEl && document.activeElement !== mEl) mEl.value = m;
+  const nat = tf.querySelector('.slot-time');
+  if (nat) nat.value = h + ':' + m;
+}
+
+/** 시/분 칸 공통 동작 — 탭하면 전체 선택, 숫자만·두 자리면 다음 칸/확정, Enter·바깥 탭이면 확정 */
+function bindTimeFields(host, commit){
+  if (!host) return;
+  const isDigit = el => !!(el && el.classList && (el.classList.contains('tt-h') || el.classList.contains('tt-m')));
+  let fresh = null;              // 방금 눌러 들어온 칸 — 첫 숫자는 기존 값을 덮어쓴다
+  host.addEventListener('focusin', e => {
+    if (!isDigit(e.target)) return;
+    const el = e.target;
+    fresh = el;
+    /* select() 는 포커스도 가져온다 — 다음 프레임에서 다시 잡을 때는 아직 이 칸이
+       포커스일 때만 한다. (시→분 자동 이동 뒤 다른 칸을 다시 잡아 포커스가 왕복하는 것 방지) */
+    const sel = () => { try{ if (document.activeElement === el) el.select(); }catch(err){} };
+    sel();
+    requestAnimationFrame(sel);           // 탭이 캐럿을 다시 잡는 경우 대비
+  });
+  host.addEventListener('pointerup', e => {
+    const el = e.target;
+    if (!isDigit(el) || fresh !== el) return;
+    try{ el.select(); }catch(err){}
+  });
+  /* 탭 뒤 캐럿이 살아 있어도(선택이 풀렸어도) 방금 들어온 칸은 통째로 선택해 둔다 */
+  host.addEventListener('click', e => {
+    const el = e.target;
+    if (!isDigit(el) || fresh !== el || document.activeElement !== el) return;
+    try{ el.select(); }catch(err){}
+  });
+  host.addEventListener('input', e => {
+    const el = e.target;
+    if (!isDigit(el)) return;
+    fresh = null;
+    el.value = el.value.replace(/[^0-9]/g, '').slice(0, 2);
+    if (el.classList.contains('tt-h') && el.value.length >= 2){
+      const mEl = el.closest('.tfield').querySelector('.tt-m');
+      if (mEl){ mEl.focus(); try{ mEl.select(); }catch(err){} }
+    } else if (el.classList.contains('tt-m') && el.value.length >= 2){
+      commit(el.closest('.tfield'));     // 00~59 까지 다 찼으면 바로 확정
+    }
+  });
+  host.addEventListener('keydown', e => {
+    const el = e.target;
+    if (!isDigit(el)) return;
+    /* 선택이 잡히지 않는 환경(일부 웹뷰·키보드)에서도 첫 숫자가 기존 값을 대신하게 */
+    if (/^[0-9]$/.test(e.key) && fresh === el){
+      fresh = null;
+      el.value = '';
+    }
+    if (e.key === 'Enter'){
+      e.preventDefault();
+      commit(el.closest('.tfield'));
+      el.blur();
+    }
+  });
+  host.addEventListener('focusout', e => {
+    const el = e.target;
+    if (!isDigit(el)) return;
+    if (fresh === el) fresh = null;
+    const tf = el.closest('.tfield');
+    setTimeout(() => {
+      if (!tf || !tf.isConnected) return;
+      if (tf.contains(document.activeElement)) return;   // 시 → 분 칸 이동은 확정하지 않는다
+      commit(tf);
+    }, 0);
+  });
+  /* 🕘 버튼: 혹시 투명 input 이 탭을 못 받는 환경(데스크톱·일부 웹뷰)에서는 직접 피커를 연다 */
+  host.addEventListener('click', e => {
+    const btn = e.target.closest('.tt-clk');
+    if (!btn) return;
+    const nat = btn.closest('.tfield').querySelector('.slot-time');
+    if (!nat) return;
+    try{ if (nat.showPicker) { nat.showPicker(); return; } }catch(err){}
+    try{ nat.focus(); nat.click(); }catch(err){}
+  });
 }
 /** 알람 배열 정리. 없으면 예전 단일 시간(legacyTime)으로 한 건 만든다. */
 function normAlarmList(list, legacyTime){
@@ -1657,7 +1807,7 @@ function renderTypeAlarms(){
     const slots = typeAlarms(type).map((a, i) => {
       const idAttr = i === 0 ? ` id="time-${type}"` : ` id="time-${type}-${a.id}"`;
       return `<div class="slot${cfg.on ? '' : ' dim'}" data-type="${type}" data-id="${a.id}">
-          <input type="time" class="slot-time"${idAttr} value="${a.time}" step="60" aria-label="${meta.label} 알람 시간">
+          ${timeFieldHTML(a.time, { idAttr, aria: meta.label + ' 알람' })}
           <button class="mode-btn${a.mode === 'vibrate' ? ' vib' : ''}" data-mode="${a.mode}" title="울림 방식 (누르면 바뀜)">${alarmModeText(a.mode)}</button>
           <label class="switch sm"><input type="checkbox" class="slot-on"${a.enabled ? ' checked' : ''} aria-label="${a.time} 알람 켜기"><span></span></label>
           ${typeAlarms(type).length > 1 ? '<button class="slot-del" title="이 알람 삭제" aria-label="알람 삭제">✕</button>' : ''}
@@ -1684,6 +1834,38 @@ function persistTypes(msg){
   nativeSync(true);
   if (msg) toast(msg);
 }
+/**
+ * v2.4 — 설정 시트에서 시·분 숫자로 바꾼 시각을 저장한다.
+ * 목록을 다시 그리지 않아(renderTypeAlarms 생략) 숫자를 이어서 칠 때 키보드·포커스가 유지된다.
+ */
+function commitTypeField(tf){
+  if (!tf) return;
+  const slot = tf.closest('.slot');
+  const block = slot && slot.closest('.tblock');
+  if (!block) return;
+  const type = block.dataset.type;
+  const cfg = settings.types[type];
+  if (!cfg) return;
+  const al = (cfg.alarms || []).find(a => a.id === slot.dataset.id);
+  if (!al) return;
+  const before = al.time;
+  const hm = syncFieldFromDigits(tf);
+  if (hm === before) return;
+  al.time = hm;
+  for (const k of TYPE_ORDER) mirrorTypeTime(settings.types[k]);
+  writeJSON(LS.settings, settings);
+  refreshAll();
+  nativeSync(true);
+  toast(`${SHIFT_META[type].label} 알람 ${hm}${roJosa(hm)} 바꿨어요`);
+}
+
+/** v2.4 — 날짜 시트에서 숫자로 바꾼 시각은 요약 줄에만 반영(저장은 '이 날만 이렇게'). */
+function commitDateField(tf){
+  if (!tf || !tf.closest('#dSlots')) return;
+  syncFieldFromDigits(tf);
+  updateDateSum();
+}
+
 function nextAlarmId(cfg){
   let n = 1;
   const ids = new Set((cfg.alarms || []).map(a => a.id));
@@ -1812,11 +1994,12 @@ if (isNative()){
   const clockTitle = $('clockOverlay').querySelector('h2');
   if (clockTitle) clockTitle.textContent = '⏰ 네이티브 알람 상태';
   const foot = document.querySelector('.footer');
-  if (foot) foot.textContent = '교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.3 · 네이티브 알람';
+  if (foot) foot.textContent = '교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.4 · 네이티브 알람';
   $('btnHelp').textContent = 'ℹ️ 이 앱은 닫아도 알람이 울려요 — 확인 사항';
   $('helpBody').innerHTML = '<b>이 앱은 폰의 알람으로 직접 예약</b>하기 때문에 앱을 닫거나 화면이 잠겨 있어도 정확한 시각에 울려요.'
     + '<ol>'
     + '<li>목록의 예정 알람 14일치가 폰 알람으로 자동 등록돼요. 주간·야간마다 알람을 여러 개 둘 수 있고, 알람마다 <b>진동만 / 소리+진동</b>을 고를 수 있어요.</li>'
+    + '<li>알람 시간의 <b>시·분 숫자를 누르면</b> 그 자리에서 숫자 키패드로 바로 바꿀 수 있어요(두 자리를 치면 다음 칸으로 넘어가고 0~23·0~59로 자동 보정). 오른쪽 <b>🕘</b> 아이콘을 누르면 폰의 시계 다이얼로그로 고르는 예전 방식도 그대로 돼요.</li>'
     + '<li>날짜를 탭하면 <b>그 날 알람 목록 전체</b>가 나와요. 하나씩 켜고/끄고/바꾼 뒤 저장하면 그 날은 <b>그 목록만</b> 울리고 기본 알람은 함께 울리지 않아요. 예외를 해제하면 기본값을 따라가요.</li>'
     + '<li>앱을 열지 않아도 <b>6시간마다 백그라운드에서 교대달력을 확인</b>해 바뀐 근무·휴가를 알람에 다시 반영해요. 설정에서 알람음(폰의 알람음·벨소리·알림음) · <b>음량</b> · <b>부스트(+6/+12dB)</b> · <b>시작 방식</b>도 고를 수 있고, <b>소리 테스트</b>로 바로 체감할 수 있어요.</li>'
     + '<li><b>음량 슬라이더는 폰의 알람 볼륨과 1:1</b>이에요. 슬라이더를 움직이면 휴대폰의 실제 알람 볼륨이 그 자리에서 같이 바뀌고, <b>100%</b>는 폰이 낼 수 있는 <b>최대 알람 볼륨</b>이에요. 폰의 물리 볼륨 키로 바꿔도 이 화면에 바로 반영돼요. 그 위에 <b>+6/+12dB</b> 부스트를 더할 수 있어요.</li>'
@@ -1836,6 +2019,10 @@ $('btnCloseSettings').addEventListener('click', () => {
 $('settingsOverlay').addEventListener('click', e => {
   if (e.target === $('settingsOverlay')) { $('settingsOverlay').classList.add('hidden'); refreshAll(); }
 });
+
+/* v2.4 — 시·분 숫자를 눌러 바로 입력 (설정 시트 · 날짜 시트) */
+bindTimeFields($('typeAlarms'), commitTypeField);
+bindTimeFields($('dSlots'), commitDateField);
 
 /* 근무별 알람 편집 (위임) */
 $('typeAlarms').addEventListener('change', e => {
@@ -1860,7 +2047,7 @@ $('typeAlarms').addEventListener('change', e => {
   } else if (el.classList.contains('slot-time')){
     if (!el.value) return;
     al.time = normTime(el.value, al.time);
-    persistTypes(`${label} 알람 ${al.time}로 바꿨어요`);
+    persistTypes(`${label} 알람 ${al.time}${roJosa(al.time)} 바꿨어요`);
   }
 });
 $('typeAlarms').addEventListener('click', e => {
@@ -1951,7 +2138,7 @@ let sheetBlocked = false;
 
 function renderDateSlots(rows){
   $('dSlots').innerHTML = rows.map((r, i) => `<div class="dslot" data-i="${i}">
-      <input type="time" class="slot-time d-slot-time" value="${r.time}" step="60" aria-label="이 날 알람 시간">
+      ${timeFieldHTML(r.time, { cls: 'd-slot-time', aria: '이 날 알람' })}
       <button class="mode-btn${r.mode === 'vibrate' ? ' vib' : ''}" data-mode="${r.mode}" title="울림 방식 (누르면 바뀜)">${alarmModeText(r.mode)}</button>
       <label class="switch sm"><input type="checkbox" class="d-slot-on"${r.enabled ? ' checked' : ''} aria-label="${r.time} 알람 켜기"><span></span></label>
       ${rows.length > 1 ? '<button class="slot-del" title="이 알람 삭제" aria-label="알람 삭제">✕</button>' : ''}
@@ -2059,6 +2246,7 @@ $('dSlots').addEventListener('change', e => {
   const t = e.target.closest('.d-slot-time');
   if (t){
     if (!t.value) t.value = '07:00';
+    setFieldTime(t.closest('.tfield'), t.value);   // 폰 시계에서 고른 값도 숫자 칸에 반영(v2.4)
     updateDateSum();
     return;
   }

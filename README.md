@@ -202,4 +202,22 @@ sh build_local.sh
    (기기에 따라 `다른 앱 위에 표시`도 함께 켜면 잠금화면 알람이 더 확실하다.)
 3. `10초 뒤 테스트 알람`으로 **화면을 잠근 상태에서** 잠금화면 위 알람 화면이 뜨는지 확인한다.
 
-minSdk 24 / targetSdk 34 / versionCode 10 / versionName 2.3
+minSdk 24 / targetSdk 34 / versionCode 11 / versionName 2.4
+
+## v2.4 (2026-11-27) — 알람 시간: 시·분 숫자를 눌러 바로 입력
+
+현수 님 요청: "분 할 때 시간 맞추는 게 불편해. 그냥 시간, 분 클릭하면 숫자 바꿀 수 있도록.
+기존 기능은 두고 추가로."
+
+- 웹(`assets/www/index.html`)의 모든 알람 시간 입력을 `timeFieldHTML()` 로 교체.
+  표시된 **시(HH)·분(MM) 숫자를 누르면** 그 자리에서 숫자 키패드(`inputmode=numeric`)로 바꾼다.
+  · 두 자리를 치면 다음 칸으로 자동 이동, Enter·바깥 탭이면 확정, 0~23 / 0~59 로 자동 보정.
+  · 설정 시트의 근무별 알람과 날짜 시트의 그 날 알람 모두 같은 UI.
+- **기존 `<input type="time">` 은 없애지 않았다.** 오른쪽 🕘 아이콘 위에 투명하게 겹쳐 두어
+  그 아이콘을 누르면 지금까지처럼 안드로이드 기본 시계 다이얼로그가 열린다(기존 기능 유지).
+  시계로 고른 값은 숫자 칸에 즉시 반영되고, 숫자로 바꾼 값은 native input 과 알람 예약에 즉시 동기화된다.
+- `select()` 가 포커스를 가져오는 특성 때문에 시→분 자동 이동 직후 포커스가 왕복하는 문제를 막았다
+  (다음 프레임 선택은 그 칸이 아직 포커스일 때만).
+- 검증: `test_app.py` 76/76(v2.4 17항목 신규) · `test_native.py` 135/135(+6) · `test_clock.py` 20/20 ·
+  `test_live.py` ALL PASS · `assembleDebug` · `testDebugUnitTest` 9/9 · `lintDebug` 0 errors(37 warnings).
+  웹 배포본 v13. APK: `downloads/포스코교대알람-v2.4.apk`.
