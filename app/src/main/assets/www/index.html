@@ -791,7 +791,7 @@ function timeFieldHTML(time, opts){
          aria-label="${aria} 분 (0~59)" autocomplete="off" enterkeyhint="done">`
     + `<button type="button" class="tt-clk" aria-label="${aria} 시계에서 고르기" title="시계에서 고르기">🕘</button>`
     + `<input type="time" class="slot-time${o.cls ? ' ' + o.cls : ''}"${o.idAttr || ''} value="${h}:${m}"
-         step="60" aria-label="${aria} 시계에서 고르기">`
+         step="60" tabindex="-1" aria-hidden="true">`
     + `</span>`;
 }
 
