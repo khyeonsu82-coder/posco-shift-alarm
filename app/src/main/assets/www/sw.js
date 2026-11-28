@@ -1,5 +1,5 @@
 /* 교대 알람 서비스 워커 — 재설치 없이 항상 최신 (network-first, 캐시 폴백) */
-const CACHE = 'shift-alarm-v7';
+const CACHE = 'shift-alarm-v8';
 const PRECACHE = [
   './',
   './manifest.json?v=1',

@@ -202,7 +202,7 @@ sh build_local.sh
    (기기에 따라 `다른 앱 위에 표시`도 함께 켜면 잠금화면 알람이 더 확실하다.)
 3. `10초 뒤 테스트 알람`으로 **화면을 잠근 상태에서** 잠금화면 위 알람 화면이 뜨는지 확인한다.
 
-minSdk 24 / targetSdk 34 / versionCode 12 / versionName 2.5
+minSdk 24 / targetSdk 34 / versionCode 13 / versionName 2.6
 
 ## v2.4 (2026-11-27) — 알람 시간: 시·분 숫자를 눌러 바로 입력
 
@@ -243,3 +243,20 @@ minSdk 24 / targetSdk 34 / versionCode 12 / versionName 2.5
   `test_native.py` **139/139**(Hero·스위치·시계 제거 확인 포함) · `test_clock.py` 20/20 · `test_live.py` ALL PASS(v16).
   Gradle `assembleDebug` · `testDebugUnitTest` 9/9 · `lintDebug` 0 errors.
 - APK: `downloads/포스코교대알람-v2.5.apk` (versionCode 12 / versionName 2.5, debug 서명).
+
+## v2.6 (2026-11-28) — 남은 시간 일 단위 표기 · Hero 입체감 · 버튼을 설정 시트로
+
+현수 님 요청: "남은 시간 표기는 개선안이 좋겠네, 그리고 hero 카드 입체감 한번 넣어보자" /
+"소리 테스트·알람 설정 그건 설정 창으로 다 넣어버리고 조금 더 깔끔하게 해보자".
+
+- **남은 시간 표기**: 1일 이상은 `6일 18시간 후`(정확히 0시간이면 `6일 후`), 24시간 미만은 `18시간 24분 후`,
+  1시간 미만은 `25분 30초 후`, 1분 미만은 `곧 울림`. 탁상시계 줄도 같은 규칙(`countdownParts`).
+- **Hero 입체감**: 상단 유리 질감 하이라이트(`::before`) + 다층 그림자 + 근무별 라디얼 글로우.
+  주간은 새벽 블루+앰버, 야간은 문라이트 퍼플, 꺼짐·없음은 차분한 슬레이트(`type-day/night/off/none`).
+  남은 시간 진행 인디케이터(`#heroProg`) — 마지막 알람 → 다음 알람 사이 진행률(하루 이상 남으면 마지막 24시간 기준).
+- **메인 정리**: 메인의 `소리 테스트`·`알람 상태(시계앱)`·`탁상시계` 버튼 줄을 없애고 설정 시트 맨 위 `빠른 실행`으로 이동.
+  메인은 헤더 → Hero → `향후 14일 알람` → 설치 안내 → 도움말만 남는다(네이티브는 탁상시계 숨김 = 2버튼).
+- 교대달력 기본값에 `2026-11-29 주간` · `2026-11-22 야간 오티×` 를 반영(ntfy 보관 만료 대비).
+- 검증: `test_app.py` **107/107**(v2.6 18항목 신규) · `test_native.py` **145/145** · `test_clock.py` 21/21 ·
+  `test_live.py` ALL PASS(웹 v17) · `assembleDebug` · `testDebugUnitTest` 9/9 · `lintDebug` 0 errors(37 warnings).
+- APK: `downloads/포스코교대알람-v2.6.apk` (versionCode 13 / versionName 2.6, debug 서명).

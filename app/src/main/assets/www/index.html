@@ -55,11 +55,34 @@
   .row{display:flex; align-items:center; gap:9px}
   .between{justify-content:space-between}
 
-  /* v2.5 hero — '다음 알람까지 남은 시간'이 주인공 (현재 시계 제거) */
-  .hero-card{background:radial-gradient(135% 130% at 12% -10%, #24334F 0%, #17202F 55%, #121926 100%);
-    border-color:#2C3B57; padding:15px 16px 14px; position:relative; overflow:hidden}
-  .hero-card::after{content:''; position:absolute; right:-46px; top:-58px; width:180px; height:180px;
-    border-radius:50%; background:radial-gradient(circle,rgba(255,196,77,.14),transparent 68%); pointer-events:none}
+  /* v2.6 hero — 남은 시간이 주인공 + 입체감(유리 하이라이트 · 다층 그림자 · 근무별 은은한 글로우) */
+  .hero-card{--glow1:rgba(59,130,246,.32); --glow2:rgba(255,196,77,.16); --edge:rgba(255,255,255,.16);
+    background:
+      radial-gradient(120% 110% at 0% -18%, var(--glow1) 0%, transparent 60%),
+      radial-gradient(95% 85% at 104% 112%, var(--glow2) 0%, transparent 66%),
+      linear-gradient(168deg, #1B263A 0%, #151E2C 54%, #101724 100%);
+    border:1px solid #2F405F; border-top-color:var(--edge);
+    padding:15px 16px 14px; position:relative; overflow:hidden;
+    box-shadow:0 20px 40px -22px rgba(0,0,0,.9), 0 8px 18px -12px rgba(0,0,0,.65),
+               0 1px 0 rgba(255,255,255,.10) inset, 0 -20px 34px -26px rgba(0,0,0,.75) inset}
+  /* 상단 유리 질감 하이라이트 */
+  .hero-card::before{content:''; position:absolute; inset:0; pointer-events:none; z-index:0;
+    background:linear-gradient(180deg, rgba(255,255,255,.11) 0%, rgba(255,255,255,.035) 20%, rgba(255,255,255,0) 42%)}
+  .hero-card::after{content:''; position:absolute; right:-64px; bottom:-84px; width:200px; height:200px;
+    border-radius:50%; background:radial-gradient(circle,var(--glow2),transparent 68%); pointer-events:none}
+  /* 근무 타입별 빛 — 주간: 새벽 블루+앰버 / 야간: 문라이트 퍼플 / 꺼짐: 차분한 슬레이트 */
+  .hero-card.type-night{--glow1:rgba(139,92,246,.34); --glow2:rgba(99,102,241,.20); --edge:rgba(196,176,255,.22);
+    border-color:#3B3063}
+  .hero-card.type-off, .hero-card.type-none{--glow1:rgba(124,140,166,.18); --glow2:rgba(124,140,166,.10);
+    --edge:rgba(255,255,255,.10); border-color:#2A3648}
+  /* 남은 시간 진행 인디케이터 — 다음 알람에 가까워질수록 채워진다 */
+  .hero-prog{margin:10px 0 0; height:4px; border-radius:3px; position:relative; z-index:1; overflow:hidden;
+    background:rgba(255,255,255,.07); box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
+  .hero-prog i{display:block; height:100%; width:0%; border-radius:3px; transition:width .6s linear;
+    background:linear-gradient(90deg, rgba(255,196,77,.30), #FFC44D); box-shadow:0 0 10px rgba(255,196,77,.45)}
+  .hero-card.type-night .hero-prog i{background:linear-gradient(90deg, rgba(196,176,255,.28), #C4B0FF);
+    box-shadow:0 0 10px rgba(139,92,246,.55)}
+  .hero-card.type-off .hero-prog, .hero-card.type-none .hero-prog{display:none}
   .hero-top{display:flex; align-items:center; justify-content:space-between; gap:8px; position:relative; z-index:1}
   .hero-count{display:flex; align-items:baseline; gap:5px; margin:10px 0 6px; position:relative; z-index:1;
     min-height:52px; flex-wrap:wrap}
@@ -69,6 +92,7 @@
   #countdown.none{font-size:28px; font-weight:800; letter-spacing:-.6px; color:#9FB0C8; line-height:1.5}
   #countdown.off{font-size:28px; font-weight:800; letter-spacing:-.6px; color:#7C8798; line-height:1.5}
   #countdown.soon{letter-spacing:-1.2px}
+  #countdown.days{font-size:42px}
   .hero-after{font-size:20px; font-weight:800; color:#FFDA8C; letter-spacing:-.3px}
   .hero-after.hidden{display:none}
   .hero-alarm{display:flex; align-items:center; gap:7px; flex-wrap:wrap; position:relative; z-index:1}
@@ -103,12 +127,12 @@
   .switch input:checked + span{background:#22C55E}
   .switch input:checked + span::after{transform:translateX(19px)}
 
-  /* actions */
-  .actions{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:11px}
-  .act{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:11px 4px 10px;
+  /* v2.6 — 빠른 실행(소리 테스트·시계앱·탁상시계)은 메인에서 빼고 설정 시트 안으로 */
+  .quick-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:7px}
+  .quick{background:#1A2434; border:1px solid #2B3850; border-radius:13px; padding:10px 3px 9px;
     display:flex; flex-direction:column; align-items:center; gap:5px; font-size:10.5px; font-weight:800; color:#C6D0E0}
-  .act:active{transform:scale(.97); background:var(--card2)}
-  .act i{font-size:17px; font-style:normal; line-height:1}
+  .quick:active{transform:scale(.97); background:#22304A}
+  .quick i{font-size:17px; font-style:normal; line-height:1}
 
   /* 14 day list */
   .list-card{padding:14px 12px 8px}
@@ -337,6 +361,7 @@
         <span id="nextWhen">—</span>
         <span id="nextShift" class="pill small off">—</span>
       </div>
+      <div class="hero-prog" id="heroProg" aria-hidden="true"><i id="heroProgFill"></i></div>
       <div class="tiny hero-hint hidden" id="heroHint"></div>
       <div class="hero-days">
         <div class="hd-row">
@@ -345,12 +370,6 @@
         </div>
         <div class="tomorrow" id="tomorrowRow"><span>내일</span></div>
       </div>
-    </section>
-
-    <section class="actions">
-      <button id="btnTest" class="act"><i>🔔</i><span>소리 테스트</span></button>
-      <button id="btnStandby" class="act"><i>🕰️</i><span>탁상시계</span></button>
-      <button id="btnClockApp" class="act"><i>⏰</i><span>시계앱</span></button>
     </section>
 
     <section class="card list-card">
@@ -372,16 +391,16 @@
         브라우저 웹앱은 화면이 꺼지거나 앱을 완전히 닫으면 백그라운드 실행이 막혀요. 그래서 이 앱은 이렇게 도와줘요.
         <ol>
           <li><b>탁상시계 모드</b>를 켜 두면 화면 잠금을 막고 정각에 알람이 울려요. 충전기 옆에 세워 두세요.</li>
-          <li>중요한 날은 <span class="kb">⏰ 시계앱</span> 버튼을 눌러 다음 알람 시각을 확인하고, <b>시각 복사</b>로 폰의 기본 시계 앱에 직접 등록하세요. (웹앱에서는 보안상 자동 등록이 막혀 있어요.)</li>
+          <li>중요한 날은 <span class="kb">⚙️ 설정 → ⏰ 시계앱</span>을 눌러 다음 알람 시각을 확인하고, <b>시각 복사</b>로 폰의 기본 시계 앱에 직접 등록하세요. (웹앱에서는 보안상 자동 등록이 막혀 있어요.)</li>
           <li><b>알람 시간은 시·분 숫자를 그냥 눌러</b> 바로 입력할 수 있어요(숫자 키패드). 오른쪽 <b>🕘</b> 아이콘을 누르면 지금처럼 폰의 시계 다이얼로그에서 고를 수도 있어요.</li>
           <li>캘린더에서 <b>추가 근무·휴가</b>를 바꾸면 이 앱은 2분 안에(앱을 여는 즉시) 자동으로 다시 맞춰요. 교대달력 원본은 읽기만 해요.</li>
-          <li>폰이 <b>무음·진동 모드</b>면 알람 소리가 나지 않아요. 자기 전에 미디어 볼륨을 올려 두고 <span class="kb">🔔 소리 테스트</span>로 확인하세요.</li>
+          <li>폰이 <b>무음·진동 모드</b>면 알람 소리가 나지 않아요. 자기 전에 미디어 볼륨을 올려 두고 <span class="kb">⚙️ 설정 → 🔔 소리 테스트</span>로 확인하세요.</li>
           <li>보조 수단: 휴대폰의 <b>ntfy 앱</b>에서 같은 동기화 코드를 구독하면 민지 님과의 캘린더 변경 알림을 받을 수 있어요. 알람을 대신 울려 주지는 않으니 중요한 날은 시계 앱 알람을 함께 맞춰 두세요.</li>
         </ol>
       </div>
     </section>
 
-    <div class="footer">교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.5</div>
+    <div class="footer">교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.6</div>
   </main>
 </div>
 
@@ -392,6 +411,15 @@
     <div class="row between">
       <h2>알람 설정</h2>
       <button id="btnCloseSettings" class="sheet-close">닫기</button>
+    </div>
+
+    <div class="group">
+      <div class="group-title">빠른 실행</div>
+      <div class="quick-grid">
+        <button id="btnTest" class="quick" type="button"><i>🔔</i><span>소리 테스트</span></button>
+        <button id="btnClockApp" class="quick" type="button"><i>⏰</i><span>시계앱</span></button>
+        <button id="btnStandby" class="quick" type="button"><i>🕰️</i><span>탁상시계</span></button>
+      </div>
     </div>
 
     <div class="group">
@@ -503,7 +531,7 @@
       <p class="hint">울리면 <b>잠금을 풀지 않고</b> 잠금화면 위 알람 화면의 <b>알람 해제</b> 버튼을 누르면 바로 꺼져요. 그러려면 위 네 항목이 모두 켜져 있어야 해요. 꺼져 있으면 잠금화면에 <b>알림 카드만</b> 뜨고, 그때는 카드의 <b>끄기</b> 버튼을 누르거나 카드를 옆으로 밀어도 알람이 꺼져요(잠금 해제 필요 없음). 테스트는 꼭 <b>화면을 잠근 상태</b>에서 해 보세요.</p>
     </div>
 
-    <div class="foot-note">교대 알람 v2.5 · 교대달력 읽기 전용 연동</div>
+    <div class="foot-note">교대 알람 v2.6 · 교대달력 읽기 전용 연동</div>
   </div>
 </div>
 
@@ -608,7 +636,7 @@ const BASELINE_SHIFTS = {
   '2026-11-14': { type: 'night', note: 'OT X' },
   '2026-11-17': { type: 'night', note: '' },
   '2026-11-20': { type: 'off',   note: '휴가' },
-  '2026-11-22': { type: 'night', note: '' },
+  '2026-11-22': { type: 'night', note: '오티×' },
   '2026-11-26': { type: 'day',   note: '평생학습' },
   '2026-11-29': { type: 'day',   note: '' },
   '2026-12-11': { type: 'off',   note: '6시 백운프라자 (포공)' },
@@ -1289,24 +1317,62 @@ function renderClock(){
     + `<span class="al">${!settings.master ? '전체 꺼짐' : a2.on ? '⏰ ' + a2.time + (tmrList.length > 1 ? ` +${tmrList.length - 1}` : '') : '알람 없음'}</span>`;
 }
 
-function countdownText(diff){
-  if (diff <= 0) return '지금';
-  const s = Math.floor(diff / 1000);
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-  if (h > 0) return `${h}시간 ${pad(m)}분 후`;
-  if (m > 0) return `${m}분 ${pad(sec)}초 후`;
-  return `${sec}초 후`;
+/* v2.6 — 남은 시간 문구: 1일 이상은 'N일 N시간', 1시간 이상은 'N시간 MM분',
+   1시간 미만은 'M분 SS초', 1분 이내는 '곧 울림'. (탁상시계 줄에서도 같은 규칙) */
+function countdownParts(diff){
+  const s = Math.max(0, Math.floor(diff / 1000));
+  const totalH = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  if (totalH >= 24){
+    const d = Math.floor(totalH / 24), h = totalH % 24;
+    return { d, h, m, sec, totalH };
+  }
+  return { d: 0, h: totalH, m, sec, totalH };
 }
 
-/* v2.5 — 메인 Hero 의 핵심 숫자. 1시간 이상은 'N시간 MM분', 1시간 미만은 'M분 SS초',
-   1분 이내(또는 스누즈로 이미 지난 순간)는 '곧 울림'. */
+function countdownText(diff){
+  if (diff <= 0) return '지금';
+  if (diff < 60000) return '곧 울림';
+  const p = countdownParts(diff);
+  if (p.d > 0) return `${p.d}일` + (p.h ? ` ${p.h}시간` : '') + ' 후';
+  if (p.h > 0) return `${p.h}시간 ${p.m}분 후`;
+  return `${p.m}분 ${pad(p.sec)}초 후`;
+}
+
+/* v2.5 Hero 의 핵심 숫자 — v2.6 에서 하루 이상을 'N일 N시간'으로 묶어 읽기 쉽게 */
 function countdownHTML(diff){
   const u = t => `<span class="u">${t}</span>`;
   if (diff < 60000) return { html: '곧 울림', after: '', soon: true };
-  const s = Math.floor(diff / 1000);
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-  if (h > 0) return { html: `${h}${u('시간')} ${m}${u('분')}`, after: '후' };
-  return { html: `${m}${u('분')} ${sec}${u('초')}`, after: '후' };
+  const p = countdownParts(diff);
+  if (p.d > 0){
+    return { html: `${p.d}${u('일')}` + (p.h ? ` ${p.h}${u('시간')}` : ''), after: '후', days: true };
+  }
+  if (p.h > 0) return { html: `${p.h}${u('시간')} ${p.m}${u('분')}`, after: '후' };
+  return { html: `${p.m}${u('분')} ${p.sec}${u('초')}`, after: '후' };
+}
+
+/* v2.6 — Hero 입체감: 다음 알람의 근무 타입에 따라 카드 빛을 바꾼다 */
+function setHeroType(type){
+  const hero = $('heroCard');
+  if (!hero) return;
+  hero.classList.remove('type-day', 'type-night', 'type-off', 'type-none');
+  hero.classList.add('type-' + (type || 'none'));
+}
+
+/* v2.6 — 남은 시간 진행 인디케이터(마지막 알람 → 다음 알람 사이에서 얼마나 왔는지).
+   다음 알람이 하루 이상 남았으면 마지막 24시간 구간을 기준으로 잡아 막대가 거의 빈 상태에서 시작한다. */
+function setHeroProgress(next){
+  const fill = $('heroProgFill');
+  if (!fill) return;
+  if (!next){ fill.style.width = '0%'; return; }
+  const now = Date.now();
+  let prev = 0;
+  for (let i = 1; i <= 3; i++){
+    for (const a of alarmsFor(dstr(addDays(new Date(), -i)))) if (a.ts < now && a.ts > prev) prev = a.ts;
+  }
+  const start = Math.max(prev, next.ts - 24 * 3600000);
+  const span = Math.max(60000, next.ts - start);
+  const pct = Math.max(0, Math.min(100, Math.round(((now - start) / span) * 100)));
+  fill.style.width = pct + '%';
 }
 
 let lastCount = '';
@@ -1323,6 +1389,8 @@ function renderNext(){
   after.className = 'hero-after hidden';
 
   if (!settings.master){
+    setHeroType('off');
+    setHeroProgress(null);
     cd.className = 'off';
     if (cd.textContent !== '알람 꺼짐') cd.textContent = '알람 꺼짐';
     lastCount = '';
@@ -1333,6 +1401,8 @@ function renderNext(){
     return;
   }
   if (!a){
+    setHeroType('none');
+    setHeroProgress(null);
     cd.className = 'none';
     if (cd.textContent !== '예정된 알람 없음') cd.textContent = '예정된 알람 없음';
     lastCount = '';
@@ -1342,8 +1412,10 @@ function renderNext(){
     hint.classList.remove('hidden');
     return;
   }
+  setHeroType(a.type);
+  setHeroProgress(a);
   const c = countdownHTML(a.ts - now);
-  cd.className = c.soon ? 'soon' : '';
+  cd.className = (c.soon ? 'soon' : '') + (c.days ? ' days' : '');
   if (c.html !== lastCount){ cd.innerHTML = c.html; lastCount = c.html; }
   if (c.after){ after.textContent = c.after; after.className = 'hero-after'; }
   timeEl.textContent = a.time;
@@ -1923,7 +1995,7 @@ if (isNative()){
   /* 네이티브 앱은 폰 알람이 직접 울리므로 탁상시계가 필요 없다 → 버튼·안내를 감춰 2버튼만 남긴다 */
   $('btnStandby').classList.add('hidden');
   $('btnGoStandby').classList.add('hidden');
-  const actBar = document.querySelector('.actions');
+  const actBar = document.querySelector('.quick-grid');
   if (actBar) actBar.style.gridTemplateColumns = 'repeat(2, 1fr)';
   const clockLabel = $('btnClockApp').querySelector('span');
   if (clockLabel) clockLabel.textContent = '알람 상태';
@@ -2011,7 +2083,7 @@ if (isNative()){
   const clockTitle = $('clockOverlay').querySelector('h2');
   if (clockTitle) clockTitle.textContent = '⏰ 네이티브 알람 상태';
   const foot = document.querySelector('.footer');
-  if (foot) foot.textContent = '교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.5 · 네이티브 알람';
+  if (foot) foot.textContent = '교대달력(hyunsu-minji-cal) 읽기 전용 연동 · v2.6 · 네이티브 알람';
   $('btnHelp').textContent = 'ℹ️ 이 앱은 닫아도 알람이 울려요 — 확인 사항';
   $('helpBody').innerHTML = '<b>이 앱은 폰의 알람으로 직접 예약</b>하기 때문에 앱을 닫거나 화면이 잠겨 있어도 정확한 시각에 울려요.'
     + '<ol>'
