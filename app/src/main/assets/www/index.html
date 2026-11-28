@@ -629,7 +629,7 @@ const HIST_CYCLE = ['day','day','off','off','night','night','off','off'];
 
 const DEFAULT_TOPIC = 'posco_hyunsu_minji_cal_sync_2026';
 
-/* 2026-11-18 시점 교대달력 실제 상태 스냅샷.
+/* 교대달력 실제 상태 스냅샷(2026-11-18 확인분 + 11/23 확인분 · 11/28 v2.6에서 11/29 주간·11/22 메모 최신화).
    ntfy 보관이 비어 있을 때를 위한 안전망(동기화가 오면 그 값이 우선한다). */
 const BASELINE_SHIFTS = {
   '2026-11-07': { type: 'off',   note: '' },
@@ -640,7 +640,9 @@ const BASELINE_SHIFTS = {
   '2026-11-22': { type: 'night', note: '오티×' },
   '2026-11-26': { type: 'day',   note: '평생학습' },
   '2026-11-29': { type: 'day',   note: '' },
+  '2026-12-08': { type: 'night', note: '' },                 // 11/23 교대달력 확인: 휴→야간 변경
   '2026-12-11': { type: 'off',   note: '6시 백운프라자 (포공)' },
+  '2026-12-14': { type: 'day',   note: 'B조 회식' },          // 기본 주간 + 메모
   '2026-12-15': { type: 'day',   note: '' },
   '2026-12-19': { type: 'night', note: '' },
   '2026-12-23': { type: 'day',   note: '' }
